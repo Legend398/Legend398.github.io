@@ -39,9 +39,9 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await expect(page.getByText("Software Engineer · Agentic AI Engineer · Data Science", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", {
     level: 1,
-    name: "I turn product ideas into working software.",
+    name: "Engineering intelligent systems people can use.",
   })).toBeVisible();
-  await expect(page.getByText(/I build web products, coding-agent tools, and data applications/i)).toBeVisible();
+  await expect(page.getByText(/I design and build agentic AI tools, software products, and data-driven applications/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Loop Engineering" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stocklane" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Credit Risk Explorer" })).toBeVisible();
@@ -54,17 +54,16 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
-test("reduced motion presents BUILD as readable static glass", async ({ page }) => {
+test("reduced motion presents the connected glass form as a static fallback", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  const glassWord = page.locator('[data-glass-word="BUILD"]');
-  await expect(glassWord).toBeVisible();
-  await expect(glassWord).toHaveAttribute("data-scene-mode", "fallback");
-  await expect(glassWord.locator("canvas")).toHaveCount(0);
-  const fallback = glassWord.locator("[data-hero-fallback]");
+  const glassForm = page.locator('[data-glass-form="connected-knot"]');
+  await expect(glassForm).toBeVisible();
+  await expect(glassForm).toHaveAttribute("data-scene-mode", "fallback");
+  await expect(glassForm.locator("canvas")).toHaveCount(0);
+  const fallback = glassForm.locator("[data-hero-fallback]");
   await expect(fallback).toBeVisible();
-  await expect(fallback).toContainText("BUILD");
 });
 
 test("homepage uses real project images and removes obsolete showcase UI", async ({ page }) => {
@@ -85,12 +84,12 @@ test("mobile homepage loads all project images without horizontal overflow", asy
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByAltText("Portrait of Himanshu Kumar")).toBeVisible();
+  await expect(page.getByAltText("Portrait of Himanshu Kumar").first()).toBeVisible();
   await expectLoadedImages(page);
   await expectNoHorizontalOverflow(page);
 });
 
-test("interactive BUILD glass redraws locally and settles when the pointer leaves", async ({ page }) => {
+test("interactive glass knot redraws on contact and settles when the pointer leaves", async ({ page }) => {
   await page.addInitScript(() => {
     const state = globalThis as typeof globalThis & { __heroDrawCalls?: number };
     state.__heroDrawCalls = 0;
@@ -112,7 +111,7 @@ test("interactive BUILD glass redraws locally and settles when the pointer leave
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
-  const scene = page.locator('[data-glass-word="BUILD"]');
+  const scene = page.locator('[data-glass-form="connected-knot"]');
   const canvas = scene.locator("canvas");
   await expect(scene).toHaveAttribute("data-scene-mode", "webgl");
   await expect(canvas).toBeVisible();
@@ -135,7 +134,7 @@ test("interactive BUILD glass redraws locally and settles when the pointer leave
 
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
-  const glassPoint = { x: box!.x + box!.width * 0.5, y: box!.y + box!.height * 0.5 };
+  const glassPoint = { x: box!.x + box!.width * 0.72, y: box!.y + box!.height * 0.46 };
   await page.mouse.move(glassPoint.x - box!.width * 0.15, glassPoint.y, { steps: 4 });
   const beforeGlassMove = await drawCalls();
   await page.mouse.move(glassPoint.x, glassPoint.y, { steps: 8 });
@@ -152,7 +151,7 @@ test("interactive BUILD glass redraws locally and settles when the pointer leave
 test("interactive glass pauses after leaving the viewport", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-  const scene = page.locator('[data-glass-word="BUILD"]');
+  const scene = page.locator('[data-glass-form="connected-knot"]');
   await expect(scene).toHaveAttribute("data-scene-active", "true");
   await page.locator("#contact").scrollIntoViewIfNeeded();
   await expect(scene).toHaveAttribute("data-scene-active", "false");
@@ -166,9 +165,9 @@ test("hero falls back cleanly when WebGL is unavailable", async () => {
     if (!baseURL) throw new Error("Playwright baseURL is required for the disabled-WebGL check.");
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto(baseURL);
-    const scene = page.locator('[data-glass-word="BUILD"]');
+    const scene = page.locator('[data-glass-form="connected-knot"]');
     await expect(scene).toHaveAttribute("data-scene-mode", "fallback");
-    await expect(scene.locator("[data-hero-fallback]")).toContainText("BUILD");
+    await expect(scene.locator("[data-hero-fallback]")).toBeVisible();
     await expect(scene.locator("canvas")).toHaveCount(0);
   } finally {
     await browser.close();
@@ -190,7 +189,7 @@ test("keyboard navigation exposes the skip link and mobile menu", async ({ page 
   await menu.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(menu).toHaveAttribute("open", "");
-  const linksAreLargeEnough = await page.locator(".homeHeroActions a, .homeProjectLinks a").evaluateAll((links) =>
+  const linksAreLargeEnough = await page.locator(".heroActions a, .homeProjectLinks a").evaluateAll((links) =>
     links.every((link) => link.getBoundingClientRect().height >= 44),
   );
   expect(linksAreLargeEnough).toBe(true);

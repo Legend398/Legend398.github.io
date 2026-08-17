@@ -32,7 +32,7 @@ function getWebGLSupportSnapshot() {
 function StaticGlassFallback() {
   return (
     <div className={styles.fallback} data-hero-fallback aria-hidden="true">
-      <span className={styles.fallbackWord}>BUILD</span>
+      <span className={styles.fallbackShape} />
     </div>
   );
 }
@@ -49,7 +49,7 @@ export type HeroExperienceProps = {
 
 export function HeroExperience({
   className,
-  description = "BUILD rendered as a clear glass word. The glass softly frosts only beneath the pointer.",
+  description = "A translucent glass knot representing connected software systems.",
 }: HeroExperienceProps) {
   const reducedMotion = useSyncExternalStore(
     (onChange) => subscribeToMediaQuery(REDUCED_MOTION_QUERY, onChange),
@@ -106,7 +106,7 @@ export function HeroExperience({
   useEffect(() => {
     const element = root.current;
     if (!element || !renderScene || !isVisible) return;
-    const hero = element.closest<HTMLElement>(".homeHero") ?? element;
+    const hero = element.closest<HTMLElement>(".heroSignal") ?? element;
     let scheduledFrame = 0;
     const updateScroll = () => {
       scheduledFrame = 0;
@@ -133,7 +133,7 @@ export function HeroExperience({
     <figure
       className={rootClassName}
       aria-label={description}
-      data-glass-word="BUILD"
+      data-glass-form="connected-knot"
       data-scene-active={renderScene && isVisible}
       data-scene-mode={renderScene ? "webgl" : "fallback"}
       data-scene-quality={compact ? "compact" : "full"}

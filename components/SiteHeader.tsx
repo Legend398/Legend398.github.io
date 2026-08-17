@@ -6,9 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { profile } from "@/lib/portfolio";
 
 const navItems = [
-  { href: "/#about", label: "About", section: "about" },
   { href: "/#work", label: "Work", section: "work" },
   { href: "/#experience", label: "Experience", section: "experience" },
+  { href: "/#about", label: "About", section: "about" },
   { href: "/#contact", label: "Contact", section: "contact" },
 ] as const;
 

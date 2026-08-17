@@ -37,42 +37,59 @@ const recognition = [
 
 export default function HomePage() {
   return (
-    <main className="portfolioHome portfolioHomeV2" id="main-content">
+    <main className="portfolioHome portfolioHomeV2 portfolioHomeRecovered" id="main-content">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <section className="homeHero" aria-labelledby="hero-title">
-        <div className="homeHeroInner">
-          <p className="homeRole">{profile.role}</p>
-          <p className="homeHeroMeta" aria-label="Portfolio edition">
-            <span>Himanshu Kumar</span>
-            <span>Portfolio · 2026</span>
-          </p>
+      <section className="heroSignal recoveredHero" aria-labelledby="hero-title">
+        <div className="heroSignalBackdrop" aria-hidden="true"><span /><span /><span /></div>
+        <div className="heroSignalGrid">
+          <p className="heroRole">{profile.role}</p>
+
+          <div className="heroStatement">
+            <p className="heroEdition">Portfolio / 2026</p>
+            <h1 id="hero-title">
+              <span>Engineering</span>
+              <span>intelligent systems</span>
+              <span>people can use.</span>
+            </h1>
+          </div>
 
           <HeroExperience
-            className="homeGlassWord"
-            description="A clear glass word reading BUILD. It stays sharp until the pointer passes directly over a letter."
+            className="heroScene recoveredHeroScene"
+            description="A large translucent glass knot representing connected software systems."
           />
 
-          <div className="homeHeroCopy">
-            <h1 id="hero-title">I turn product ideas into working software.</h1>
+          <div className="heroHuman">
             <p>
-              I&apos;m Himanshu Kumar. I build web products, coding-agent tools, and data applications—from the
-              interface and backend to the tests that show they work.
+              I&apos;m Himanshu Kumar. I design and build agentic AI tools, software products, and data-driven
+              applications—from the interface and system design to testing and delivery.
             </p>
-            <div className="homeHeroActions">
-              <a className="homePrimaryLink" href={profile.resume} download>
+            <div className="heroActions">
+              <a className="primaryButton" href={profile.resume} download>
                 Download résumé <span aria-hidden="true">↓</span>
               </a>
-              <a className="homeTextLink" href={profile.github} target="_blank" rel="noreferrer">
+              <a className="secondaryButton" href={profile.github} target="_blank" rel="noreferrer">
                 GitHub <span aria-hidden="true">↗</span>
                 <span className="srOnly"> (opens in a new tab)</span>
               </a>
             </div>
           </div>
 
-          <p className="homeScrollCue" aria-hidden="true">
-            Scroll <span>↓</span>
-          </p>
+          <figure className="heroPortraitProof">
+            <div className="heroPortraitCrop">
+              <Image
+                src="/himanshu-kumar-portrait-1800.jpeg"
+                alt="Portrait of Himanshu Kumar"
+                fill
+                priority
+                quality={88}
+                sizes="(max-width: 760px) 42vw, 22vw"
+              />
+            </div>
+            <figcaption><strong>Himanshu Kumar</strong><span>Software engineer</span></figcaption>
+          </figure>
+
+          <p className="heroScrollCue" aria-hidden="true">Scroll for selected work <span>↓</span></p>
         </div>
       </section>
 
