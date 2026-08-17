@@ -1,0 +1,36 @@
+{
+  "name": "himanshu-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "next build && playwright test --project=chromium",
+    "verify": "npm run lint && npm run typecheck && npm run test:e2e"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.7",
+    "@react-three/fiber": "9.7.0",
+    "next": "^16.3.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "0.185.1",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.3.0",
+    "typescript": "^6.0.0"
+  }
+}

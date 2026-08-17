@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HK monogram">
+  <rect width="64" height="64" rx="10" fill="#101714"/>
+  <path d="M14 15h7v14h13V15h7v34h-7V35H21v14h-7V15Zm30 0h7v14l10-14h-8l-9 13v8l9 13h8L51 35V15h-7Z" fill="#f1ece2"/>
+  <circle cx="52" cy="12" r="4" fill="#00a884"/>
+</svg>

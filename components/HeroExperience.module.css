@@ -1,0 +1,116 @@
+.root {
+  position: relative;
+  isolation: isolate;
+  min-height: clamp(30rem, 57vw, 48rem);
+  overflow: visible;
+  background: transparent;
+}
+
+.canvasWrap,
+.fallback,
+.caustics {
+  position: absolute;
+  inset: 0;
+}
+
+.canvasWrap {
+  z-index: 2;
+  inset: 2% -3% 0 15%;
+}
+
+.canvasWrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.caustics {
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.caustics span {
+  position: absolute;
+  display: block;
+  width: min(42rem, 62%);
+  aspect-ratio: 1.8;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.38;
+}
+
+.caustics span:first-child {
+  top: 14%;
+  right: 8%;
+  background: rgba(102, 143, 255, 0.48);
+}
+
+.caustics span:last-child {
+  right: 0;
+  bottom: 8%;
+  background: rgba(255, 190, 155, 0.34);
+  transform: scale(0.78);
+}
+
+.fallback {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding-left: 15%;
+  overflow: hidden;
+}
+
+.fallbackWord {
+  color: rgba(235, 246, 255, 0.18);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(4.4rem, 11.5vw, 11rem);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.075em;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.75);
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 18px 42px rgba(56, 85, 145, 0.24);
+  filter: drop-shadow(0 18px 32px rgba(42, 70, 132, 0.2));
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .root {
+    min-height: clamp(21rem, 92vw, 29rem);
+  }
+
+  .canvasWrap {
+    inset: 0 -10%;
+  }
+
+  .fallback {
+    padding-left: 0;
+  }
+
+  .fallbackWord {
+    font-size: clamp(3.7rem, 19vw, 6.4rem);
+  }
+
+  .caustics span {
+    filter: blur(48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caustics span {
+    filter: blur(54px);
+  }
+}
