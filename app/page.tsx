@@ -20,24 +20,6 @@ const jsonLd = {
   knowsAbout: ["Software engineering", "Agentic AI engineering", "Data science", "Applied machine learning"],
 };
 
-const recognition = [
-  {
-    date: "Apr 2026",
-    title: "Winner · LPU Innotek 2026",
-    detail: "Department of Student Research and Project.",
-  },
-  {
-    date: "Jun 2026",
-    title: "Featured by LPU",
-    detail: "Student-led product presentation on official university channels.",
-  },
-  {
-    date: "2022–2026",
-    title: "B.Tech · Computer Science and Engineering",
-    detail: "Lovely Professional University · CGPA 7.87",
-  },
-] as const;
-
 export default function HomePage() {
   return (
     <HomeRuntime>
@@ -191,18 +173,6 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <aside className={styles.experienceAside} aria-labelledby="recognition-title">
-              <p className={styles.kicker} id="recognition-title"><span>04</span> Recognition &amp; education</p>
-              <div className={styles.ledger}>
-                {recognition.map((item) => (
-                  <article className={styles.ledgerRow} key={`${item.date}-${item.title}`}>
-                    <time>{item.date}</time>
-                    <h3>{item.title}</h3>
-                    <p>{item.detail}</p>
-                  </article>
-                ))}
-              </div>
-            </aside>
           </div>
         </section>
 
@@ -210,7 +180,7 @@ export default function HomePage() {
           <div className={styles.sectionFrame}>
             <header className={styles.certificateHeader}>
               <div>
-                <p className={styles.kicker}><span>05</span> Certifications · 2024–2025</p>
+                <p className={styles.kicker}><span>04</span> Certifications · 2024–2025</p>
                 <h2 id="certifications-title">Certifications</h2>
               </div>
               <p>
@@ -252,7 +222,7 @@ export default function HomePage() {
         >
           <div className={`${styles.sectionFrame} ${styles.contactInner}`}>
             <div className={styles.contactCopy}>
-              <p className={styles.kicker}><span>06</span> Contact</p>
+              <p className={styles.kicker}><span>05</span> Contact</p>
               <h2 id="contact-title">Have a useful product to build?</h2>
               <p className={styles.contactIntro}>
                 I&apos;m open to software engineering, agentic AI, and data science roles and projects. Send me the

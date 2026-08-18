@@ -93,6 +93,10 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Credit Risk Explorer" })).toBeVisible();
   await expect(page.getByText(/full[- ]stack/i)).toHaveCount(0);
   await expect(page.getByText(/Pulsewatch/i)).toHaveCount(0);
+  await expect(page.getByText("Recognition & education", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Winner · LPU Innotek 2026", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Featured by LPU", { exact: true })).toHaveCount(0);
+  await expect(page.locator("#certifications")).toHaveCount(1);
   await expect(page.getByRole("link", { name: "Résumé", exact: true }).first()).toHaveAttribute(
     "href",
     "/Himanshu-Kumar-Resume-2026.pdf",
