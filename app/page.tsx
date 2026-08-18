@@ -1,5 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
+import LiquidEther from "@/components/effects/LiquidEther";
+import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
 import { PortfolioExperience } from "@/components/portfolio/PortfolioExperience";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
@@ -53,6 +54,8 @@ const projectMedia: Record<ProjectVisualKind, { secondary: string; secondaryAlt:
   },
 };
 
+const HERO_ETHER_COLORS = ["#07130f", "#2c6656", "#9fcbbd"];
+
 export default function HomePage() {
   return (
     <HomeRuntime>
@@ -61,6 +64,26 @@ export default function HomePage() {
         <PortfolioExperience />
 
         <section className={styles.hero} data-glass-zone="hero" aria-labelledby="hero-title">
+          <div className={styles.heroEtherFrame}>
+            <LiquidEther
+              autoIntensity={1.3}
+              autoRampDuration={0.8}
+              autoResumeDelay={600}
+              autoSpeed={0.26}
+              BFECC={false}
+              className={styles.heroEtherCanvas}
+              colors={HERO_ETHER_COLORS}
+              cursorSize={108}
+              dt={0.012}
+              isViscous
+              iterationsPoisson={18}
+              iterationsViscous={18}
+              mouseForce={14}
+              resolution={0.38}
+              takeoverDuration={0.35}
+              viscous={27}
+            />
+          </div>
           <div className={`${styles.sectionFrame} ${styles.heroInner}`}>
             <p className={styles.role} data-hero-role>{profile.role}</p>
 
@@ -98,16 +121,13 @@ export default function HomePage() {
 
         <section className={styles.about} id="about" aria-labelledby="about-title">
           <div className={`${styles.sectionFrame} ${styles.aboutGrid}`}>
-            <figure className={styles.portrait}>
-              <Image
-                alt="Portrait of Himanshu Kumar"
-                fill
-                quality={90}
-                sizes="(max-width: 760px) 92vw, 38vw"
-                src="/himanshu-kumar-portrait-1800.jpeg"
+            <div className={styles.profileCardWrap}>
+              <HimanshuProfileCard
+                behindGlowEnabled
+                showIconPattern={false}
+                showUserInfo
               />
-              <figcaption>Himanshu Kumar · Computer Science and Engineering · 2026</figcaption>
-            </figure>
+            </div>
 
             <div className={styles.aboutCopy}>
               <p className={styles.kicker}><span>01</span> About</p>

@@ -48,12 +48,13 @@ const backgroundFragmentShader = /* glsl */ `
   void main() {
     vec2 uv = vUv;
     vec3 ivory = vec3(0.957, 0.941, 0.906);
-    vec3 color = ivory;
+    vec3 forest = vec3(0.027, 0.075, 0.059);
+    vec3 color = mix(forest, ivory, step(0.5, uZone));
     float mint = softBand(uv, vec2(0.38, 0.42), normalize(vec2(0.72, 0.48)), 0.105);
     float ice = softBand(uv, vec2(0.58, 0.62), normalize(vec2(-0.56, 0.83)), 0.075);
     float peach = softBand(uv, vec2(0.82, 0.32), normalize(vec2(0.68, -0.72)), 0.095);
-    color = mix(color, vec3(0.58, 0.8, 0.74), mint * 0.34);
-    color = mix(color, vec3(0.78, 0.88, 0.86), ice * 0.28);
+    color = mix(color, vec3(0.31, 0.47, 0.41), mint * (uZone > 0.5 ? 0.22 : 0.3));
+    color = mix(color, vec3(0.7, 0.74, 0.71), ice * (uZone > 0.5 ? 0.16 : 0.2));
     color = mix(color, vec3(0.94, 0.7, 0.61), peach * (uZone > 0.5 ? 0.25 : 0.18));
     float strandA = softBand(uv, vec2(0.47, 0.48), normalize(vec2(0.84, 0.54)), 0.011);
     float strandB = softBand(uv, vec2(0.67, 0.43), normalize(vec2(-0.66, 0.75)), 0.008);
@@ -85,8 +86,11 @@ const glassFragmentShader = /* glsl */ `
   uniform sampler2D uSceneTexture;
   uniform vec2 uResolution;
   uniform vec2 uPointerUv;
+  uniform vec2 uRippleCenter;
   uniform float uHover;
   uniform float uOpacity;
+  uniform float uRippleAge;
+  uniform float uRippleEnergy;
   uniform float uZone;
   varying vec3 vNormal;
   varying vec3 vWorldPosition;
@@ -100,7 +104,7 @@ const glassFragmentShader = /* glsl */ `
 
   void main() {
     vec2 screenUv = gl_FragCoord.xy / max(uResolution, vec2(1.0));
-    vec3 normal = normalize(vNormal);
+    vec3 normal = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
     vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
     float facing = max(dot(normal, viewDirection), 0.0);
     float fresnel = pow(1.0 - facing, 2.25);
@@ -110,32 +114,36 @@ const glassFragmentShader = /* glsl */ `
     float lens = (1.0 - smoothstep(0.018, 0.088, pointerDistance)) * uHover;
     float lensRing = smoothstep(0.084, 0.06, pointerDistance) * (1.0 - smoothstep(0.034, 0.052, pointerDistance)) * uHover;
     vec2 lensDirection = normalize(screenUv - uPointerUv + vec2(0.0001));
-    vec2 localOffset = refractionOffset + lensDirection * lens * 0.019;
+    float rippleDistance = distance(screenUv, uRippleCenter);
+    float rippleEnvelope = (1.0 - smoothstep(0.018, 0.155, rippleDistance)) * exp(-uRippleAge * 4.8);
+    float rippleWave = sin(rippleDistance * 155.0 - uRippleAge * 27.0);
+    vec2 rippleDirection = normalize(screenUv - uRippleCenter + vec2(0.0001));
+    vec2 rippleOffset = rippleDirection * rippleWave * rippleEnvelope * uRippleEnergy * 0.0065;
+    vec2 localOffset = refractionOffset + lensDirection * lens * 0.026 + rippleOffset;
 
     vec3 refracted = sampleDispersed(screenUv, localOffset, 0.34 + lens * 0.5);
     vec2 pixel = 1.0 / max(uResolution, vec2(1.0));
     vec3 localBlur = (
-      sampleDispersed(screenUv + vec2(pixel.x * 5.0, 0.0), localOffset, 0.54) +
-      sampleDispersed(screenUv - vec2(pixel.x * 5.0, 0.0), localOffset, 0.54) +
-      sampleDispersed(screenUv + vec2(0.0, pixel.y * 5.0), localOffset, 0.54) +
-      sampleDispersed(screenUv - vec2(0.0, pixel.y * 5.0), localOffset, 0.54)
+      sampleDispersed(screenUv + vec2(pixel.x * 9.0, 0.0), localOffset, 0.54) +
+      sampleDispersed(screenUv - vec2(pixel.x * 9.0, 0.0), localOffset, 0.54) +
+      sampleDispersed(screenUv + vec2(0.0, pixel.y * 9.0), localOffset, 0.54) +
+      sampleDispersed(screenUv - vec2(0.0, pixel.y * 9.0), localOffset, 0.54)
     ) * 0.25;
-    refracted = mix(refracted, localBlur, lens * 0.82);
+    refracted = mix(refracted, localBlur, lens * 0.92);
 
     vec3 lightDirection = normalize(vec3(-0.42, 0.68, 0.62));
     vec3 reflectedLight = reflect(-lightDirection, normal);
     float specular = pow(max(dot(reflectedLight, viewDirection), 0.0), 54.0);
-    vec3 edgeTint = uZone > 0.5 ? vec3(0.045, 0.2, 0.17) : vec3(0.035, 0.24, 0.19);
-    vec3 absorbed = refracted * vec3(0.3, 0.64, 0.55);
-    float lowerShade = 1.0 - smoothstep(-0.65, 0.35, normal.y);
-    vec3 color = mix(refracted, absorbed, 0.3);
-    color = mix(color, edgeTint, 0.075 + fresnel * 0.36 + lowerShade * 0.085);
-    color += vec3(0.84, 1.0, 0.96) * fresnel * 0.2;
-    color += vec3(1.0) * specular * 0.56;
+    vec3 edgeTint = uZone > 0.5 ? vec3(0.82, 0.84, 0.82) : vec3(0.78, 0.84, 0.81);
+    vec3 color = refracted;
+    color = mix(color, edgeTint, 0.008 + fresnel * 0.08);
+    color += vec3(0.99, 1.0, 0.99) * fresnel * 0.62;
+    color += vec3(1.0) * specular * 0.68;
     color += vec3(0.22, 0.78, 0.7) * lensRing * 0.16;
     color += vec3(1.0, 0.51, 0.34) * lensRing * 0.045;
+    color += vec3(0.2, 0.72, 0.6) * lens * 0.12;
 
-    float alpha = (0.68 + fresnel * 0.26 + specular * 0.12 + lens * 0.035) * uOpacity;
+    float alpha = (0.13 + fresnel * 0.7 + specular * 0.2 + lens * 0.14) * uOpacity;
     gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.98));
   }
 `;
@@ -157,7 +165,11 @@ function GlassWord({
   const contactTarget = useRef(0);
   const contactValue = useRef(0);
   const contactStatus = useRef(false);
+  const previousPointer = useRef(new THREE.Vector2(0.5, 0.5));
   const readyReported = useRef(false);
+  const rippleAge = useRef(10);
+  const rippleCenter = useRef(new THREE.Vector2(0.5, 0.5));
+  const rippleEnergy = useRef(0);
   const invalidate = useThree((state) => state.invalidate);
   const renderTarget = useFBO({ depthBuffer: false, stencilBuffer: false, samples: 0 });
   const drawingBufferSize = useMemo(() => new THREE.Vector2(), []);
@@ -206,6 +218,9 @@ function GlassWord({
       uHover: { value: 0 },
       uOpacity: { value: 1 },
       uPointerUv: { value: new THREE.Vector2(0.5, 0.5) },
+      uRippleAge: { value: 10 },
+      uRippleCenter: { value: new THREE.Vector2(0.5, 0.5) },
+      uRippleEnergy: { value: 0 },
       uResolution: { value: new THREE.Vector2(1, 1) },
       uSceneTexture: { value: renderTarget.texture },
       uZone: { value: 0 },
@@ -242,7 +257,7 @@ function GlassWord({
       ? (inHero ? 0.04 + progress * 0.14 : 0)
       : (inHero ? 1.68 : 0.3);
     const targetY = compact
-      ? (inHero ? 0 + progress * 0.9 : -1.55)
+      ? (inHero ? 0.28 + progress * 0.9 : -1.55)
       : (inHero ? 0.96 + progress * 0.92 : -1.15);
     const targetScaleX = compact
       ? (inHero ? 0.43 - progress * 0.04 : 0.46)
@@ -273,6 +288,22 @@ function GlassWord({
       raycaster.setFromCamera(new THREE.Vector2(motion.pointerX, motion.pointerY), camera);
       directlyOverWord = raycaster.intersectObject(mesh.current, false).length > 0;
     }
+    const pointerUvX = (motion.pointerX + 1) * 0.5;
+    const pointerUvY = (motion.pointerY + 1) * 0.5;
+    const pointerTravel = Math.hypot(
+      pointerUvX - previousPointer.current.x,
+      pointerUvY - previousPointer.current.y,
+    );
+    const enteredWord = directlyOverWord && !contactStatus.current;
+    if (directlyOverWord && (enteredWord || pointerTravel > 0.0025)) {
+      rippleCenter.current.set(pointerUvX, pointerUvY);
+      rippleAge.current = 0;
+      rippleEnergy.current = Math.min(1, Math.max(enteredWord ? 0.28 : 0, pointerTravel * 14));
+    } else {
+      rippleAge.current += delta;
+      rippleEnergy.current = THREE.MathUtils.damp(rippleEnergy.current, 0, 5.6, delta);
+    }
+    previousPointer.current.set(pointerUvX, pointerUvY);
     contactTarget.current = directlyOverWord ? 1 : 0;
     contactValue.current = THREE.MathUtils.damp(contactValue.current, contactTarget.current, 16, delta);
     if (directlyOverWord !== contactStatus.current) {
@@ -281,8 +312,11 @@ function GlassWord({
     }
 
     material.uniforms.uHover.value = contactValue.current;
-    material.uniforms.uPointerUv.value.set((motion.pointerX + 1) * 0.5, (motion.pointerY + 1) * 0.5);
+    material.uniforms.uPointerUv.value.set(pointerUvX, pointerUvY);
     material.uniforms.uOpacity.value = targetOpacity;
+    material.uniforms.uRippleAge.value = rippleAge.current;
+    material.uniforms.uRippleCenter.value.copy(rippleCenter.current);
+    material.uniforms.uRippleEnergy.value = rippleEnergy.current;
     material.uniforms.uZone.value = inHero ? 0 : 1;
     background.material.uniforms.uZone.value = inHero ? 0 : 1;
     gl.getDrawingBufferSize(drawingBufferSize);
@@ -313,6 +347,7 @@ function GlassWord({
       Math.abs(group.current.scale.z - targetScaleZ),
       Math.abs(group.current.rotation.y - targetRotationY),
       Math.abs(group.current.rotation.z - targetRotationZ),
+      rippleEnergy.current,
     );
     if (unsettled > 0.001) invalidate();
   }, 1);
@@ -320,7 +355,7 @@ function GlassWord({
 
   return (
     <group
-      position={[compact ? 0.04 : 1.68, compact ? 0 : 0.96, 0]}
+      position={[compact ? 0.04 : 1.68, compact ? 0.28 : 0.96, 0]}
       ref={group}
       rotation={[-0.08, compact ? -0.06 : -0.11, compact ? -0.018 : 0]}
       scale={compact ? [0.43, 0.53, 0.48] : [0.62, 0.84, 0.76]}

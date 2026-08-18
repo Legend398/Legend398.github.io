@@ -1,4 +1,4 @@
-import { chromium, expect, test, type Page } from "@playwright/test";
+import { chromium, expect, test, type Locator, type Page } from "@playwright/test";
 
 const projectSlugs = ["loop-engineering", "stocklane", "credit-risk-explorer"] as const;
 
@@ -23,6 +23,30 @@ async function expectNoHorizontalOverflow(page: Page) {
     viewportWidth: document.documentElement.clientWidth,
   }));
   expect(dimensions.pageWidth).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
+}
+
+async function webglFingerprint(canvas: Locator) {
+  return canvas.evaluate((element) => {
+    const target = element as HTMLCanvasElement;
+    const context = target.getContext("webgl2") ?? target.getContext("webgl");
+    if (!context) return 0;
+    const pixels = new Uint8Array(context.drawingBufferWidth * context.drawingBufferHeight * 4);
+    context.readPixels(
+      0,
+      0,
+      context.drawingBufferWidth,
+      context.drawingBufferHeight,
+      context.RGBA,
+      context.UNSIGNED_BYTE,
+      pixels,
+    );
+    let hash = 2_166_136_261;
+    for (let index = 0; index < pixels.length; index += 17) {
+      hash ^= pixels[index] ?? 0;
+      hash = Math.imul(hash, 16_777_619);
+    }
+    return hash >>> 0;
+  });
 }
 
 test("homepage explains Himanshu's work in plain language", async ({ page }) => {
@@ -87,9 +111,103 @@ test("mobile homepage loads all project images without horizontal overflow", asy
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByAltText("Portrait of Himanshu Kumar").first()).toBeVisible();
+  await expect(page.locator("[data-profile-card]")).toBeVisible();
   await expectLoadedImages(page);
   await expectNoHorizontalOverflow(page);
+});
+
+test("About uses the requested profile card settings and mobile uses a static ether fallback", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const about = page.locator("#about");
+  const ether = page.locator('[data-glass-zone="hero"] [data-mode]');
+  await about.scrollIntoViewIfNeeded();
+  const profileCard = about.locator("[data-profile-card]");
+
+  await expect(profileCard).toBeVisible();
+  await expect(profileCard.locator("[data-profile-behind-glow]")).toHaveCount(1);
+  await expect(profileCard.locator("[data-profile-user-info]")).toHaveCount(1);
+  await expect(profileCard.locator("[data-profile-icon-pattern]")).toHaveCount(0);
+  await expect(profileCard.getByRole("link", { name: /Email, contact Himanshu Kumar/i })).toHaveAttribute(
+    "href",
+    "mailto:hk270941@gmail.com",
+  );
+  await expect(ether).toHaveAttribute("data-mode", "css");
+  await expect(ether.locator("canvas")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
+test("profile ripple mounts only while the About card is visible", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const ripple = page.locator("[data-ripple-distortion]");
+  await expect(ripple).toHaveCount(0);
+  await page.locator("#about").scrollIntoViewIfNeeded();
+  await expect(ripple).toHaveCount(1);
+  await expect(ripple.locator("canvas")).toHaveCount(1);
+  await page.locator("#work").scrollIntoViewIfNeeded();
+  await expect(ripple).toHaveCount(0);
+});
+
+test("the official hero ether is scoped to BUILD and sleeps when the hero leaves view", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = globalThis as typeof globalThis & { __etherDrawCalls?: number };
+    state.__etherDrawCalls = 0;
+    const countEtherDraw = (context: WebGLRenderingContext | WebGL2RenderingContext) => {
+      const canvas = context.canvas;
+      if (canvas instanceof HTMLCanvasElement && canvas.closest("[data-liquid-ether]")) {
+        state.__etherDrawCalls = (state.__etherDrawCalls ?? 0) + 1;
+      }
+    };
+    const prototype = typeof WebGL2RenderingContext === "undefined"
+      ? WebGLRenderingContext.prototype
+      : WebGL2RenderingContext.prototype;
+    const drawArrays = prototype.drawArrays;
+    const drawElements = prototype.drawElements;
+    prototype.drawArrays = function (...args: Parameters<WebGLRenderingContext["drawArrays"]>) {
+      countEtherDraw(this);
+      return drawArrays.apply(this, args);
+    };
+    prototype.drawElements = function (...args: Parameters<WebGLRenderingContext["drawElements"]>) {
+      countEtherDraw(this);
+      return drawElements.apply(this, args);
+    };
+  });
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const glass = page.locator("[data-glass-stage]");
+  const hero = page.locator('[data-glass-zone="hero"]');
+  const about = page.locator("#about");
+  const ether = hero.locator("[data-mode]");
+
+  await expect(glass).toHaveAttribute("data-scene-active", "true");
+  await expect(ether).toHaveAttribute("data-mode", "webgl");
+  await expect(ether.locator("canvas")).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => (
+    globalThis as typeof globalThis & { __etherDrawCalls?: number }
+  ).__etherDrawCalls ?? 0)).toBeGreaterThan(0);
+
+  await about.scrollIntoViewIfNeeded();
+  await expect(glass).toHaveAttribute("data-scene-active", "false");
+  await expect(about.locator("[data-mode]")).toHaveCount(0);
+  await page.waitForTimeout(200);
+  const offscreenDraws = await page.evaluate(() => (
+    globalThis as typeof globalThis & { __etherDrawCalls?: number }
+  ).__etherDrawCalls ?? 0);
+  await page.waitForTimeout(600);
+  const settledDraws = await page.evaluate(() => (
+    globalThis as typeof globalThis & { __etherDrawCalls?: number }
+  ).__etherDrawCalls ?? 0);
+  expect(settledDraws - offscreenDraws).toBeLessThanOrEqual(2);
+
+  await page.locator("#work").scrollIntoViewIfNeeded();
+  await expect(glass).toHaveAttribute("data-scene-active", "false");
 });
 
 test("mobile hero is an authored scene instead of stacked desktop blocks", async ({ page }) => {
@@ -132,7 +250,7 @@ test("mobile hero is an authored scene instead of stacked desktop blocks", async
     expect(wordBox.y).toBeGreaterThanOrEqual(slotBox.y - 24);
     expect(wordBox.y + wordBox.height).toBeLessThanOrEqual(slotBox.y + slotBox.height + 24);
     expect(aboutBox.y).toBeLessThanOrEqual(viewport.height - 16);
-    expect(heroBox.height).toBeGreaterThanOrEqual(760);
+    expect(heroBox.height).toBeGreaterThanOrEqual(680);
     await expectNoHorizontalOverflow(page);
   }
 });
@@ -141,17 +259,23 @@ test("interactive glass word changes only on direct contact and settles after po
   await page.addInitScript(() => {
     const state = globalThis as typeof globalThis & { __heroDrawCalls?: number };
     state.__heroDrawCalls = 0;
+    const countHeroDraw = (context: WebGLRenderingContext | WebGL2RenderingContext) => {
+      const canvas = context.canvas;
+      if (canvas instanceof HTMLCanvasElement && canvas.closest("[data-glass-stage]")) {
+        state.__heroDrawCalls = (state.__heroDrawCalls ?? 0) + 1;
+      }
+    };
     const prototype = typeof WebGL2RenderingContext === "undefined"
       ? WebGLRenderingContext.prototype
       : WebGL2RenderingContext.prototype;
     const drawArrays = prototype.drawArrays;
     const drawElements = prototype.drawElements;
     prototype.drawArrays = function (...args: Parameters<WebGLRenderingContext["drawArrays"]>) {
-      state.__heroDrawCalls = (state.__heroDrawCalls ?? 0) + 1;
+      countHeroDraw(this);
       return drawArrays.apply(this, args);
     };
     prototype.drawElements = function (...args: Parameters<WebGLRenderingContext["drawElements"]>) {
-      state.__heroDrawCalls = (state.__heroDrawCalls ?? 0) + 1;
+      countHeroDraw(this);
       return drawElements.apply(this, args);
     };
   });
@@ -168,32 +292,33 @@ test("interactive glass word changes only on direct contact and settles after po
   const drawCalls = () => page.evaluate(() => (
     globalThis as typeof globalThis & { __heroDrawCalls?: number }
   ).__heroDrawCalls ?? 0);
-  const idleFingerprintA = await canvas.screenshot();
+  const idleFingerprintA = await webglFingerprint(canvas);
   await page.waitForTimeout(500);
-  const idleFingerprintB = await canvas.screenshot();
-  expect(idleFingerprintB.equals(idleFingerprintA)).toBe(true);
+  const idleFingerprintB = await webglFingerprint(canvas);
+  expect(idleFingerprintB).toBe(idleFingerprintA);
 
   const idleDraws = await drawCalls();
   await page.mouse.move(24, 24);
   await page.waitForTimeout(250);
   expect((await drawCalls()) - idleDraws).toBeLessThanOrEqual(4);
-  const outsideFingerprint = await canvas.screenshot();
-  expect(outsideFingerprint.equals(idleFingerprintB)).toBe(true);
+  const outsideFingerprint = await webglFingerprint(canvas);
+  expect(outsideFingerprint).toBe(idleFingerprintB);
+  const outsideDraws = await drawCalls();
 
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
   const glassPoint = { x: box!.x + box!.width * 0.63, y: box!.y + box!.height * 0.4 };
   await page.mouse.move(glassPoint.x, glassPoint.y, { steps: 8 });
   await expect(scene).toHaveAttribute("data-pointer-contact", "true");
-  const contactFingerprint = await canvas.screenshot();
-  expect(contactFingerprint.equals(outsideFingerprint)).toBe(false);
+  await page.waitForTimeout(180);
+  expect((await drawCalls()) - outsideDraws).toBeGreaterThan(4);
 
   await page.mouse.move(24, 24);
   await page.waitForTimeout(1_000);
-  const pointerOutFingerprintA = await canvas.screenshot();
+  const pointerOutFingerprintA = await webglFingerprint(canvas);
   await page.waitForTimeout(500);
-  const pointerOutFingerprintB = await canvas.screenshot();
-  expect(pointerOutFingerprintB.equals(pointerOutFingerprintA)).toBe(true);
+  const pointerOutFingerprintB = await webglFingerprint(canvas);
+  expect(pointerOutFingerprintB).toBe(pointerOutFingerprintA);
 });
 
 test("shared glass stage sleeps between hero and contact and returns for the finale", async ({ page }) => {

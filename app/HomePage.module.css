@@ -25,6 +25,13 @@
   width: 100%;
 }
 
+.about,
+.work,
+.experience,
+.contact {
+  scroll-margin-top: 72px;
+}
+
 .hero {
   min-height: max(780px, 100svh);
   padding-top: 72px;
@@ -42,6 +49,45 @@
   pointer-events: none;
   position: absolute;
   z-index: 0;
+}
+
+.hero::after {
+  background:
+    radial-gradient(circle at 68% 38%, rgba(117, 214, 187, 0.2), transparent 31%),
+    radial-gradient(circle at 86% 72%, rgba(239, 118, 95, 0.08), transparent 28%),
+    linear-gradient(135deg, #0b241d 0%, #07130f 58%, #102d24 100%);
+  content: "";
+  height: clamp(20rem, 43vh, 29rem);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 100%);
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: clamp(7.4rem, 13vh, 9rem);
+  width: min(56vw, 58rem);
+  z-index: 0;
+}
+
+.heroEtherFrame {
+  bottom: auto;
+  height: clamp(20rem, 43vh, 29rem);
+  left: auto;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 100%);
+  opacity: 0.86;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: clamp(7.4rem, 13vh, 9rem);
+  width: min(56vw, 58rem);
+  z-index: 1;
+}
+
+.heroEtherCanvas {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
 }
 
 .heroInner {
@@ -211,8 +257,10 @@
 }
 
 .about {
-  background: #10231c;
+  background: #07110e;
   color: #f7f2e8;
+  isolation: isolate;
+  overflow: hidden;
   padding-block: clamp(5rem, 10vw, 10rem);
   position: relative;
   z-index: 4;
@@ -222,42 +270,16 @@
   display: grid;
   gap: clamp(2rem, 5vw, 6rem);
   grid-template-columns: minmax(280px, 0.82fr) minmax(360px, 1.18fr);
-}
-
-.portrait {
-  align-self: start;
-  aspect-ratio: 4 / 5;
-  background: #d7d0c4;
-  overflow: hidden;
   position: relative;
+  z-index: 3;
 }
 
-.portrait img {
-  object-fit: cover;
-  object-position: 50% 70%;
-  transform: scale(1.24);
-}
-
-.portrait::after {
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  content: "";
-  inset: 0.75rem;
-  pointer-events: none;
-  position: absolute;
-}
-
-.portrait figcaption {
-  background: rgba(6, 22, 16, 0.84);
-  bottom: 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-family: var(--font-mono), monospace;
-  font-size: 0.63rem;
-  left: 0;
-  letter-spacing: 0.06em;
-  padding: 0.85rem 1rem;
-  position: absolute;
-  right: 0;
-  text-transform: uppercase;
+.profileCardWrap {
+  align-self: center;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  position: relative;
   z-index: 2;
 }
 
@@ -713,8 +735,34 @@
   }
 
   .hero {
-    min-height: max(760px, calc(100svh - 44px));
+    min-height: clamp(700px, calc(100svh - 144px), 760px);
     padding-top: 60px;
+  }
+
+  .hero::after {
+    border-bottom: 1px solid rgba(117, 214, 187, 0.16);
+    border-top: 1px solid rgba(117, 214, 187, 0.16);
+    height: clamp(11.6rem, 22svh, 12.5rem);
+    -webkit-mask-image: none;
+    mask-image: none;
+    top: clamp(17.9rem, 32.4svh, 18.9rem);
+    width: 100%;
+  }
+
+  .heroEtherFrame {
+    bottom: auto;
+    height: clamp(11.6rem, 22svh, 12.5rem);
+    left: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+    opacity: 0.9;
+    right: 0;
+    top: clamp(17.9rem, 32.4svh, 18.9rem);
+    width: 100%;
+  }
+
+  .heroEtherCanvas {
+    position: absolute;
   }
 
   .hero::before {
@@ -726,7 +774,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto minmax(11rem, 1fr) auto;
-    min-height: calc(max(760px, calc(100svh - 44px)) - 60px);
+    min-height: calc(clamp(700px, calc(100svh - 144px), 760px) - 60px);
     padding-bottom: 1rem;
     padding-top: 1.25rem;
   }
@@ -818,6 +866,13 @@
     padding-block: 4rem 4.75rem;
   }
 
+  .about,
+  .work,
+  .experience,
+  .contact {
+    scroll-margin-top: 60px;
+  }
+
   .work {
     padding-block: 4.75rem 5.5rem;
   }
@@ -833,7 +888,7 @@
     display: block;
   }
 
-  .portrait {
+  .profileCardWrap {
     margin: 0 auto 3.5rem;
     max-width: 30rem;
   }

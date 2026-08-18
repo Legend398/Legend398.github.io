@@ -1,0 +1,15 @@
+.root {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.fallback {
+  background:
+    radial-gradient(ellipse at 22% 40%, rgba(215, 228, 223, 0.72), transparent 19%),
+    radial-gradient(ellipse at 58% 62%, rgba(44, 102, 86, 0.88), transparent 31%),
+    radial-gradient(ellipse at 88% 26%, rgba(125, 168, 155, 0.52), transparent 23%),
+    #07130f;
+}
