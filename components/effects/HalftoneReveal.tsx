@@ -555,6 +555,7 @@ export default function HalftoneReveal({
       data-halftone-frame="0"
       data-halftone-mode={renderMode}
       data-halftone-ready="false"
+      data-halftone-radius={String(revealRadius)}
       data-halftone-reveal
       data-halftone-reveal-src={revealSrc}
       data-halftone-print-src={printSrc}

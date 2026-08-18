@@ -44,6 +44,42 @@
   inset: 0;
 }
 
+.revealHint {
+  align-items: center;
+  background: rgba(8, 21, 16, 0.86);
+  border: 1px solid rgba(238, 233, 221, 0.42);
+  bottom: 1.15rem;
+  color: #f4f0e7;
+  display: inline-flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  gap: 0.55rem;
+  letter-spacing: 0.08em;
+  padding: 0.65rem 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  right: 1.15rem;
+  text-transform: uppercase;
+  transform: translate3d(0, 0, 0);
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 3;
+}
+
+.revealHint svg {
+  fill: none;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+  width: 1rem;
+}
+
+.root[data-pointer-inside="true"] .revealHint {
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
+}
+
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .motionPlane {
     transform: none;
@@ -51,7 +87,8 @@
   }
 
   .secondaryPreload,
-  .halftone {
+  .halftone,
+  .revealHint {
     display: none;
   }
 }

@@ -353,6 +353,8 @@ test("hovering project media reveals the image without shifting its title or lin
   const reveal = project.locator("[data-halftone-reveal]");
   const media = project.locator("[data-project-media]");
   await expect(reveal).toHaveAttribute("data-halftone-state", "idle");
+  await expect(reveal).toHaveAttribute("data-halftone-radius", "0.52");
+  await expect(project.locator("[data-project-reveal-hint]")).toContainText("Move across image to reveal");
   await expect(reveal).toHaveAttribute("data-halftone-print-src", "/work/loop-engineering-showcase.jpeg");
   await expect(reveal).toHaveAttribute("data-halftone-reveal-src", "/work/loop-engineering-system.png");
   const frameBefore = Number(await reveal.getAttribute("data-halftone-frame"));

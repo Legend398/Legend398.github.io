@@ -100,10 +100,17 @@ export function ProjectMedia({
           dotDensity={74}
           dotSize={0.94}
           angle={45}
-          revealRadius={0.26}
+          revealRadius={0.52}
           edge={0.76}
           follow={0.18}
         />
+        <span className={styles.revealHint} data-project-reveal-hint aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="7" />
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          </svg>
+          Move across image to reveal
+        </span>
         <span className={styles.imageDescription} data-secondary-alt={secondaryAlt} aria-hidden="true" />
       </div>
     </div>
