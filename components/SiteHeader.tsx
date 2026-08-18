@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { profile } from "@/lib/portfolio";
+import styles from "./SiteHeader.module.css";
 
 const navItems = [
   { href: "/#work", label: "Work", section: "work" },
@@ -47,19 +48,21 @@ export function SiteHeader() {
   };
 
   return (
-    <header className={pathname === "/" ? "siteHeader siteHeaderHome" : "siteHeader"}>
-      <div className="headerInner">
-        <Link className="brand" href="/" aria-label="Himanshu Kumar, home">
-          <span className="brandMark" aria-hidden="true">
+    <header className={styles.header}>
+      <div className={styles.inner}>
+        <Link className={styles.brand} href="/" aria-label="Himanshu Kumar, home">
+          <span className={styles.brandMark} aria-hidden="true">
             HK
           </span>
-          <span className="brandName">Himanshu Kumar</span>
+          <span className={styles.brandName}>Himanshu Kumar</span>
         </Link>
 
-        <nav className="desktopNav" aria-label="Primary navigation">
+        <nav className={styles.desktopNav} aria-label="Primary navigation">
           {navItems.map((item) => (
             <Link
-              className={currentSection === item.section ? "sectionNavLink sectionNavLinkActive" : "sectionNavLink"}
+              className={currentSection === item.section
+                ? `${styles.sectionLink} ${styles.sectionLinkActive}`
+                : styles.sectionLink}
               aria-current={currentSection === item.section ? "location" : undefined}
               key={item.href}
               href={item.href}
@@ -67,17 +70,17 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <a className="navResume" href={profile.resume} download>
+          <a className={styles.resume} href={profile.resume} download>
             Résumé <span aria-hidden="true">↓</span>
           </a>
         </nav>
 
-        <details className="mobileNav" ref={mobileMenu}>
+        <details className={`mobileNav ${styles.mobileNav}`} ref={mobileMenu}>
           <summary>Menu</summary>
           <nav aria-label="Mobile navigation">
             {navItems.map((item) => (
               <Link
-                className={currentSection === item.section ? "sectionNavLinkActive" : undefined}
+                className={currentSection === item.section ? styles.sectionLinkActive : undefined}
                 aria-current={currentSection === item.section ? "location" : undefined}
                 key={item.href}
                 href={item.href}

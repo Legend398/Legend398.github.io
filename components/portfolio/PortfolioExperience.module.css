@@ -1,0 +1,125 @@
+.stage {
+  height: 100svh;
+  inset: 0;
+  margin: 0;
+  opacity: 1;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  transition: opacity 280ms ease;
+  width: 100%;
+  z-index: 2;
+}
+
+.stage[data-scene-active="false"],
+.stage[data-scene-zone="none"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.canvasWrap,
+.canvasWrap canvas {
+  height: 100% !important;
+  inset: 0;
+  position: absolute !important;
+  width: 100% !important;
+}
+
+.fallback {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: flex-end;
+  padding: 5rem clamp(1rem, 4vw, 4rem) 3rem;
+  position: relative;
+}
+
+.fallback::before,
+.fallback::after {
+  border-radius: 999px;
+  content: "";
+  filter: blur(44px);
+  pointer-events: none;
+  position: absolute;
+}
+
+.fallback::before {
+  background: rgba(139, 219, 201, 0.42);
+  height: 34vh;
+  right: 17vw;
+  top: 20vh;
+  transform: rotate(-28deg);
+  width: 9vw;
+}
+
+.fallback::after {
+  background: rgba(255, 174, 137, 0.3);
+  height: 20vh;
+  right: 5vw;
+  top: 44vh;
+  transform: rotate(35deg);
+  width: 13vw;
+}
+
+.fallbackWord {
+  -webkit-text-stroke: 2px rgba(11, 61, 49, 0.52);
+  background:
+    linear-gradient(132deg, rgba(255, 255, 255, 0.86) 10%, rgba(198, 229, 219, 0.42) 32%, rgba(255, 255, 255, 0.12) 56%, rgba(119, 184, 167, 0.48) 84%);
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 24px 28px rgba(21, 73, 59, 0.15));
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(7rem, 19vw, 19rem);
+  font-weight: 800;
+  letter-spacing: -0.095em;
+  line-height: 0.72;
+  opacity: 0.92;
+  transform: translate(4%, -3%);
+  white-space: nowrap;
+}
+
+.stage[data-scene-zone="contact"] .fallback {
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0;
+}
+
+.stage[data-scene-zone="contact"] .fallbackWord {
+  font-size: clamp(8rem, 23vw, 23rem);
+  opacity: 0.38;
+  transform: translateY(28%);
+}
+
+.srOnly {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 760px) {
+  .fallback {
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8.75rem 0 0;
+  }
+
+  .fallbackWord {
+    font-size: clamp(5.5rem, 30vw, 8rem);
+    transform: none;
+  }
+
+  .stage[data-scene-zone="contact"] .fallbackWord {
+    font-size: 34vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    transition: none;
+  }
+}
+

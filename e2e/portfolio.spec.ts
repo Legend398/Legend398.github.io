@@ -3,7 +3,7 @@ import { chromium, expect, test, type Page } from "@playwright/test";
 const projectSlugs = ["loop-engineering", "stocklane", "credit-risk-explorer"] as const;
 
 async function expectLoadedImages(page: Page) {
-  const images = page.locator(".homeProjectMedia img");
+  const images = page.locator("[data-project-primary]");
   await expect(images).toHaveCount(3);
 
   for (let index = 0; index < 3; index += 1) {
@@ -39,9 +39,9 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await expect(page.getByText("Software Engineer · Agentic AI Engineer · Data Science", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", {
     level: 1,
-    name: "Engineering intelligent systems people can use.",
+    name: "Software, AI, and data—built to be used.",
   })).toBeVisible();
-  await expect(page.getByText(/I design and build agentic AI tools, software products, and data-driven applications/i)).toBeVisible();
+  await expect(page.getByText(/I design agentic AI tools, reliable software products, and clear machine-learning applications/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Loop Engineering" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stocklane" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Credit Risk Explorer" })).toBeVisible();
@@ -54,16 +54,18 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
-test("reduced motion presents the connected glass form as a static fallback", async ({ page }) => {
+test("reduced motion presents BUILD as a static readable glass fallback", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  const glassForm = page.locator('[data-glass-form="connected-knot"]');
+  const glassForm = page.locator('[data-glass-stage]');
   await expect(glassForm).toBeVisible();
+  await expect(glassForm).toHaveAttribute("data-glass-word", "BUILD");
   await expect(glassForm).toHaveAttribute("data-scene-mode", "fallback");
   await expect(glassForm.locator("canvas")).toHaveCount(0);
-  const fallback = glassForm.locator("[data-hero-fallback]");
+  const fallback = glassForm.locator("[data-glass-fallback]");
   await expect(fallback).toBeVisible();
+  await expect(fallback).toContainText("BUILD");
 });
 
 test("homepage uses real project images and removes obsolete showcase UI", async ({ page }) => {
@@ -72,6 +74,7 @@ test("homepage uses real project images and removes obsolete showcase UI", async
   await page.goto("/");
 
   await expectLoadedImages(page);
+  await expect(page.locator("[data-project-secondary]")).toHaveCount(3);
   await expect(page.locator(".systemsInterlude")).toHaveCount(0);
   await expect(page.locator(".finaleExperience, [data-finale-mode]")).toHaveCount(0);
   await expect(page.locator(".homeProject .creditMock, .homeProject .creditShelfVisual")).toHaveCount(0);
@@ -89,7 +92,7 @@ test("mobile homepage loads all project images without horizontal overflow", asy
   await expectNoHorizontalOverflow(page);
 });
 
-test("interactive glass knot redraws on contact and settles when the pointer leaves", async ({ page }) => {
+test("interactive glass word changes only on direct contact and settles after pointer exit", async ({ page }) => {
   await page.addInitScript(() => {
     const state = globalThis as typeof globalThis & { __heroDrawCalls?: number };
     state.__heroDrawCalls = 0;
@@ -111,7 +114,7 @@ test("interactive glass knot redraws on contact and settles when the pointer lea
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
-  const scene = page.locator('[data-glass-form="connected-knot"]');
+  const scene = page.locator('[data-glass-stage]');
   const canvas = scene.locator("canvas");
   await expect(scene).toHaveAttribute("data-scene-mode", "webgl");
   await expect(canvas).toBeVisible();
@@ -134,11 +137,11 @@ test("interactive glass knot redraws on contact and settles when the pointer lea
 
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
-  const glassPoint = { x: box!.x + box!.width * 0.72, y: box!.y + box!.height * 0.46 };
-  await page.mouse.move(glassPoint.x - box!.width * 0.15, glassPoint.y, { steps: 4 });
-  const beforeGlassMove = await drawCalls();
+  const glassPoint = { x: box!.x + box!.width * 0.63, y: box!.y + box!.height * 0.4 };
   await page.mouse.move(glassPoint.x, glassPoint.y, { steps: 8 });
-  await expect.poll(drawCalls).toBeGreaterThan(beforeGlassMove);
+  await expect(scene).toHaveAttribute("data-pointer-contact", "true");
+  const contactFingerprint = await canvas.screenshot();
+  expect(contactFingerprint.equals(outsideFingerprint)).toBe(false);
 
   await page.mouse.move(24, 24);
   await page.waitForTimeout(1_000);
@@ -148,13 +151,16 @@ test("interactive glass knot redraws on contact and settles when the pointer lea
   expect(pointerOutFingerprintB.equals(pointerOutFingerprintA)).toBe(true);
 });
 
-test("interactive glass pauses after leaving the viewport", async ({ page }) => {
+test("shared glass stage sleeps between hero and contact and returns for the finale", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-  const scene = page.locator('[data-glass-form="connected-knot"]');
+  const scene = page.locator('[data-glass-stage]');
   await expect(scene).toHaveAttribute("data-scene-active", "true");
-  await page.locator("#contact").scrollIntoViewIfNeeded();
+  await page.locator("#work").scrollIntoViewIfNeeded();
   await expect(scene).toHaveAttribute("data-scene-active", "false");
+  await page.locator("#contact").scrollIntoViewIfNeeded();
+  await expect(scene).toHaveAttribute("data-scene-active", "true");
+  await expect(scene).toHaveAttribute("data-scene-zone", "contact");
 });
 
 test("hero falls back cleanly when WebGL is unavailable", async () => {
@@ -165,9 +171,9 @@ test("hero falls back cleanly when WebGL is unavailable", async () => {
     if (!baseURL) throw new Error("Playwright baseURL is required for the disabled-WebGL check.");
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto(baseURL);
-    const scene = page.locator('[data-glass-form="connected-knot"]');
+    const scene = page.locator('[data-glass-stage]');
     await expect(scene).toHaveAttribute("data-scene-mode", "fallback");
-    await expect(scene.locator("[data-hero-fallback]")).toBeVisible();
+    await expect(scene.locator("[data-glass-fallback]")).toBeVisible();
     await expect(scene.locator("canvas")).toHaveCount(0);
   } finally {
     await browser.close();
@@ -189,10 +195,28 @@ test("keyboard navigation exposes the skip link and mobile menu", async ({ page 
   await menu.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(menu).toHaveAttribute("open", "");
-  const linksAreLargeEnough = await page.locator(".heroActions a, .homeProjectLinks a").evaluateAll((links) =>
+  const linksAreLargeEnough = await page.locator("[data-primary-action], [data-project-action]").evaluateAll((links) =>
     links.every((link) => link.getBoundingClientRect().height >= 44),
   );
   expect(linksAreLargeEnough).toBe(true);
+});
+
+test("project hover changes only media paint, never project layout", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+  const project = page.locator("[data-project-card]").first();
+  await project.scrollIntoViewIfNeeded();
+  const title = project.getByRole("heading");
+  const before = await title.boundingBox();
+  await project.locator("[data-project-media]").hover({ position: { x: 420, y: 220 } });
+  await page.waitForTimeout(300);
+  const after = await title.boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  expect(Math.abs(after!.x - before!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(2);
+  await expect(project.locator("[data-project-media]")).toHaveAttribute("data-pointer-inside", "true");
 });
 
 for (const slug of projectSlugs) {
