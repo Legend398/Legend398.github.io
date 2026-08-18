@@ -258,6 +258,7 @@
 .about,
 .work,
 .experience,
+.certifications,
 .contact {
   scroll-margin-top: 76px;
 }
@@ -532,6 +533,7 @@
 .about h2,
 .work h2,
 .experience h2,
+.certifications h2,
 .contact h2 {
   font-family: var(--font-sans), sans-serif;
   font-weight: 620;
@@ -645,7 +647,6 @@
   display: block;
   overflow: hidden;
   position: relative;
-  transition: border-color 280ms ease, box-shadow 360ms ease;
 }
 
 .projectLead .mediaLink {
@@ -654,11 +655,6 @@
 
 .projectCard:not(.projectLead) .mediaLink {
   aspect-ratio: 4 / 3;
-}
-
-.mediaLink:hover {
-  border-color: rgba(16, 23, 19, 0.52);
-  box-shadow: 0 30px 72px -42px rgba(7, 21, 15, 0.9);
 }
 
 .mediaLink:focus-visible {
@@ -846,6 +842,96 @@
   color: rgba(16, 23, 19, 0.65);
   grid-column: 2;
   line-height: 1.5;
+}
+
+.certifications {
+  background: var(--home-ink);
+  color: #f7f2e8;
+  padding-block: clamp(5rem, 9vw, 8rem);
+  position: relative;
+  z-index: 4;
+}
+
+.certificateHeader {
+  align-items: end;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.55fr);
+  margin-bottom: clamp(2.75rem, 6vw, 5rem);
+}
+
+.certifications h2 {
+  font-size: clamp(3rem, 6.2vw, 7rem);
+}
+
+.certificateHeader > p {
+  color: rgba(247, 242, 232, 0.7);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  max-width: 33rem;
+}
+
+.certificateLedger {
+  border-top: 1px solid rgba(247, 242, 232, 0.2);
+}
+
+.certificateRow {
+  align-items: center;
+  border-bottom: 1px solid rgba(247, 242, 232, 0.2);
+  color: inherit;
+  display: grid;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  grid-template-columns: 3rem minmax(0, 1fr) 7rem 6rem;
+  min-height: 6.25rem;
+  padding: 1.25rem 0;
+  text-decoration: none;
+}
+
+.certificateRow:focus-visible {
+  outline: 3px solid var(--home-vermilion);
+  outline-offset: 4px;
+}
+
+.certificateNumber,
+.certificateRow time,
+.certificateAction {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.certificateNumber {
+  color: #ef765f;
+}
+
+.certificateCopy {
+  min-width: 0;
+}
+
+.certificateCopy strong {
+  display: block;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(1.1rem, 1.75vw, 1.55rem);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.certificateCopy > span {
+  color: rgba(247, 242, 232, 0.62);
+  display: block;
+  line-height: 1.5;
+  margin-top: 0.4rem;
+}
+
+.certificateRow time {
+  color: rgba(247, 242, 232, 0.66);
+}
+
+.certificateAction {
+  color: #75d6bb;
+  justify-self: end;
 }
 
 .contact {
@@ -1147,6 +1233,7 @@
   .about,
   .work,
   .experience,
+  .certifications,
   .contact {
     scroll-margin-top: 60px;
   }
@@ -1159,9 +1246,14 @@
     padding-block: 4.5rem 5.5rem;
   }
 
+  .certifications {
+    padding-block: 4.5rem 5rem;
+  }
+
   .aboutGrid,
   .experienceGrid,
   .workHeader,
+  .certificateHeader,
   .projectGrid {
     display: block;
   }
@@ -1173,7 +1265,8 @@
 
   .about h2,
   .workHeader h2,
-  .experience h2 {
+  .experience h2,
+  .certifications h2 {
     font-size: clamp(2.65rem, 12vw, 4.3rem);
   }
 
@@ -1192,6 +1285,10 @@
   }
 
   .workHeader > p {
+    margin-top: 1.25rem;
+  }
+
+  .certificateHeader > p {
     margin-top: 1.25rem;
   }
 
@@ -1229,6 +1326,38 @@
 
   .ledgerRow {
     grid-template-columns: 5.6rem 1fr;
+  }
+
+  .certificateRow {
+    align-items: start;
+    gap: 0.55rem 1rem;
+    grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+    min-height: 0;
+    padding-block: 1.35rem;
+  }
+
+  .certificateNumber {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .certificateCopy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .certificateCopy strong {
+    font-size: 1.08rem;
+  }
+
+  .certificateRow time {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .certificateAction {
+    grid-column: 3;
+    grid-row: 1 / span 2;
   }
 
   .contact {

@@ -253,6 +253,30 @@ export const certificates = [
     url: "https://coursera.org/share/c0c916d553fe7e6a7fcb97218fba584d",
   },
   {
+    title: "Supervised Machine Learning: Regression and Classification",
+    issuer: "DeepLearning.AI & Stanford Online · Coursera",
+    date: "Nov 2024",
+    url: "https://coursera.org/share/431044c97afc4385f04a9fdd0218d64a",
+  },
+  {
+    title: "Excel Skills for Business Specialization",
+    issuer: "Macquarie University · Coursera",
+    date: "May 2024",
+    url: "https://coursera.org/share/1009d3c01cdd68aef1addeee59c77509",
+  },
+  {
+    title: "R Programming",
+    issuer: "Johns Hopkins University · Coursera",
+    date: "May 2024",
+    url: "https://coursera.org/share/3e9cede70711b7fdbb69a8c01783267e",
+  },
+  {
+    title: "Approximation Algorithms and Linear Programming",
+    issuer: "University of Colorado Boulder · Coursera",
+    date: "May 2024",
+    url: "https://coursera.org/share/a784802d0811982b65dcb1bf90edccbb",
+  },
+  {
     title: "Dynamic Programming, Greedy Algorithms",
     issuer: "University of Colorado Boulder · Coursera",
     date: "Apr 2024",
@@ -263,11 +287,5 @@ export const certificates = [
     issuer: "University of California San Diego · Coursera",
     date: "Feb 2024",
     url: "https://coursera.org/share/6547c68a44057688f3f313f827ca8432",
-  },
-  {
-    title: "Approximation Algorithms and Linear Programming",
-    issuer: "University of Colorado Boulder · Coursera",
-    date: "May 2024",
-    url: "https://coursera.org/share/a784802d0811982b65dcb1bf90edccbb",
   },
 ] as const;

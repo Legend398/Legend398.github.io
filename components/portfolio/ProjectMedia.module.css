@@ -1,11 +1,10 @@
 .root {
-  --frame-gap: clamp(0.48rem, 0.8vw, 0.72rem);
-  background: #07150f;
+  background: #d9ddd5;
+  border: 1px solid rgba(7, 21, 15, 0.22);
   box-sizing: border-box;
   height: 100%;
-  isolation: isolate;
   overflow: hidden;
-  padding: var(--frame-gap);
+  padding: clamp(0.3rem, 0.5vw, 0.48rem);
   position: relative;
 }
 
@@ -16,152 +15,6 @@
   position: relative;
 }
 
-.imageWindow::after {
-  background: linear-gradient(to top, rgba(3, 12, 8, 0.28), transparent 34%);
-  content: "";
-  inset: 0;
-  opacity: 0.72;
-  pointer-events: none;
-  position: absolute;
-  transition: opacity 420ms ease;
-  z-index: 1;
-}
-
 .image {
-  filter: saturate(0.96) contrast(1.015);
   object-fit: cover;
-  transform: none;
-  transition:
-    filter 460ms ease,
-    transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.corner {
-  color: rgba(244, 240, 231, 0.78);
-  height: 1.35rem;
-  pointer-events: none;
-  position: absolute;
-  transition: color 260ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  width: 1.35rem;
-  z-index: 3;
-}
-
-.topLeft {
-  border-left: 1px solid currentColor;
-  border-top: 1px solid currentColor;
-  left: 0.25rem;
-  top: 0.25rem;
-}
-
-.topRight {
-  border-right: 1px solid currentColor;
-  border-top: 1px solid currentColor;
-  right: 0.25rem;
-  top: 0.25rem;
-}
-
-.bottomRight {
-  border-bottom: 1px solid currentColor;
-  border-right: 1px solid currentColor;
-  bottom: 0.25rem;
-  right: 0.25rem;
-}
-
-.bottomLeft {
-  border-bottom: 1px solid currentColor;
-  border-left: 1px solid currentColor;
-  bottom: 0.25rem;
-  left: 0.25rem;
-}
-
-.frameCue {
-  align-items: center;
-  backdrop-filter: blur(10px);
-  background: rgba(7, 21, 15, 0.9);
-  border: 1px solid rgba(244, 240, 231, 0.42);
-  bottom: calc(var(--frame-gap) + 0.7rem);
-  color: #f4f0e7;
-  display: inline-flex;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.62rem;
-  font-weight: 700;
-  gap: 0.62rem;
-  letter-spacing: 0.08em;
-  padding: 0.68rem 0.78rem;
-  pointer-events: none;
-  position: absolute;
-  right: calc(var(--frame-gap) + 0.7rem);
-  text-transform: uppercase;
-  transition:
-    background 260ms ease,
-    color 260ms ease,
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  z-index: 4;
-}
-
-.frameCue svg {
-  fill: none;
-  height: 0.95rem;
-  stroke: currentColor;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-  stroke-width: 1.5;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  width: 0.95rem;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .root:hover .image {
-    filter: saturate(1.04) contrast(1.025);
-    transform: scale(1.055);
-  }
-
-  .root:hover .imageWindow::after {
-    opacity: 0.38;
-  }
-
-  .root:hover .corner {
-    color: #f15a3d;
-    transform: scale(0.88);
-  }
-
-  .root:hover .frameCue {
-    background: #f4f0e7;
-    color: #07150f;
-    transform: translate3d(-0.16rem, -0.16rem, 0);
-  }
-
-  .root:hover .frameCue svg {
-    transform: translate3d(0.12rem, -0.12rem, 0);
-  }
-}
-
-@media (max-width: 760px) {
-  .frameCue {
-    bottom: calc(var(--frame-gap) + 0.55rem);
-    gap: 0;
-    padding: 0.68rem;
-    right: calc(var(--frame-gap) + 0.55rem);
-  }
-
-  .frameCue span {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .image,
-  .imageWindow::after,
-  .corner,
-  .frameCue,
-  .frameCue svg {
-    transition: none;
-  }
-
-  .root:hover .image,
-  .root:hover .corner,
-  .root:hover .frameCue,
-  .root:hover .frameCue svg {
-    transform: none;
-  }
 }

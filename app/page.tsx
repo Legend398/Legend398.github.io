@@ -3,7 +3,7 @@ import { GlassWordScene } from "@/components/GlassWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
-import { capabilities, profile, projects } from "@/lib/portfolio";
+import { capabilities, certificates, profile, projects } from "@/lib/portfolio";
 import styles from "./HomePage.module.css";
 
 const jsonLd = {
@@ -206,6 +206,44 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className={styles.certifications} id="certifications" aria-labelledby="certifications-title">
+          <div className={styles.sectionFrame}>
+            <header className={styles.certificateHeader}>
+              <div>
+                <p className={styles.kicker}><span>05</span> Certifications · 2024–2025</p>
+                <h2 id="certifications-title">Certifications</h2>
+              </div>
+              <p>
+                Verified coursework across agentic AI, machine learning, data tools, and algorithms.
+                Each entry links to the original certificate.
+              </p>
+            </header>
+
+            <div className={styles.certificateLedger}>
+              {certificates.map((certificate, index) => (
+                <a
+                  aria-label={`View certificate: ${certificate.title}`}
+                  className={styles.certificateRow}
+                  data-certificate
+                  href={certificate.url}
+                  key={certificate.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <span className={styles.certificateNumber}>{String(index + 1).padStart(2, "0")}</span>
+                  <span className={styles.certificateCopy}>
+                    <strong>{certificate.title}</strong>
+                    <span>{certificate.issuer}</span>
+                  </span>
+                  <time>{certificate.date}</time>
+                  <span className={styles.certificateAction} aria-hidden="true">View ↗</span>
+                  <span className="srOnly"> (opens in a new tab)</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section
           className={styles.contact}
           data-glass-zone="contact"
@@ -214,7 +252,7 @@ export default function HomePage() {
         >
           <div className={`${styles.sectionFrame} ${styles.contactInner}`}>
             <div className={styles.contactCopy}>
-              <p className={styles.kicker}><span>05</span> Contact</p>
+              <p className={styles.kicker}><span>06</span> Contact</p>
               <h2 id="contact-title">Have a useful product to build?</h2>
               <p className={styles.contactIntro}>
                 I&apos;m open to software engineering, agentic AI, and data science roles and projects. Send me the

@@ -25,18 +25,6 @@ async function expectDecodedImage(image: Locator) {
   })).toBe(true);
 }
 
-async function expectLayoutShiftWithin(
-  before: { x: number; y: number } | null,
-  after: { x: number; y: number } | null,
-  tolerance: number,
-) {
-  expect(before).not.toBeNull();
-  expect(after).not.toBeNull();
-  if (!before || !after) return;
-  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(tolerance);
-  expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(tolerance);
-}
-
 async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     pageWidth: document.documentElement.scrollWidth,
@@ -329,56 +317,50 @@ test("keyboard navigation exposes the skip link and primary navigation", async (
   expect(linksAreLargeEnough).toBe(true);
 });
 
-test("project cards use real images inside the editorial frame", async ({ page }) => {
+test("project cards keep the real images simple and static", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
   const media = page.locator("[data-project-media]");
   await media.first().scrollIntoViewIfNeeded();
-  await expect(page.locator("[data-project-frame]")).toHaveCount(3);
-  await expect(page.locator("[data-frame-corner]")).toHaveCount(12);
-  await expect(page.locator("[data-project-frame-cue]")).toHaveCount(3);
-  await expect(page.locator("[data-project-frame-cue]").first()).toContainText("View case study");
+  await expect(media).toHaveCount(3);
+  await expect(page.locator("[data-project-frame]")).toHaveCount(0);
+  await expect(page.locator("[data-frame-corner]")).toHaveCount(0);
+  await expect(page.locator("[data-project-frame-cue]")).toHaveCount(0);
   await expect(media.locator("canvas")).toHaveCount(0);
   await expect(page.locator("[data-halftone-reveal]")).toHaveCount(0);
   for (let index = 0; index < 3; index += 1) {
     await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
   }
+  await media.first().hover();
+  await expect(media.first().locator("[data-project-primary]")).toHaveCSS("transform", "none");
 });
 
-test("hovering a project frame zooms only the image without shifting the card", async ({ page }) => {
-  await page.setViewportSize({ width: 1_440, height: 900 });
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.goto("/");
-
-  const project = page.locator("[data-project-card]").first();
-  await project.scrollIntoViewIfNeeded();
-  const title = project.getByRole("heading");
-  const link = project.locator("[data-project-action]").last();
-  const media = project.locator("[data-project-media]");
-  const image = project.locator("[data-project-primary]");
-  const mediaBefore = await media.boundingBox();
-  const titleBefore = await title.boundingBox();
-  const linkBefore = await link.boundingBox();
-
-  await media.hover();
-  await expect.poll(async () => image.evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).a))
-    .toBeGreaterThan(1.03);
-  await expectLayoutShiftWithin(mediaBefore, await media.boundingBox(), 1);
-  await expectLayoutShiftWithin(titleBefore, await title.boundingBox(), 2);
-  await expectLayoutShiftWithin(linkBefore, await link.boundingBox(), 2);
-});
-
-test("reduced motion keeps project frame images static", async ({ page }) => {
+test("homepage lists the seven unique certifications from both CVs", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  const media = page.locator("[data-project-media]").first();
-  await media.scrollIntoViewIfNeeded();
-  await media.hover();
-  await expect(media.locator("[data-project-primary]")).toHaveCSS("transform", "none");
+  const certifications = page.locator("#certifications");
+  await certifications.scrollIntoViewIfNeeded();
+  await expect(certifications.getByRole("heading", { name: "Certifications" })).toBeVisible();
+  await expect(certifications.locator("[data-certificate]")).toHaveCount(7);
+
+  const expectedCertificates = [
+    ["AI Agents and Agentic AI Architecture in Python", "https://coursera.org/share/c0c916d553fe7e6a7fcb97218fba584d"],
+    ["Supervised Machine Learning: Regression and Classification", "https://coursera.org/share/431044c97afc4385f04a9fdd0218d64a"],
+    ["Excel Skills for Business Specialization", "https://coursera.org/share/1009d3c01cdd68aef1addeee59c77509"],
+    ["R Programming", "https://coursera.org/share/3e9cede70711b7fdbb69a8c01783267e"],
+    ["Approximation Algorithms and Linear Programming", "https://coursera.org/share/a784802d0811982b65dcb1bf90edccbb"],
+    ["Dynamic Programming, Greedy Algorithms", "https://coursera.org/share/d276b8738e8d9822625ae1b15a98f0f9"],
+    ["Algorithms on Strings", "https://coursera.org/share/6547c68a44057688f3f313f827ca8432"],
+  ] as const;
+
+  for (const [title, href] of expectedCertificates) {
+    await expect(certifications.getByRole("link", { name: `View certificate: ${title}`, exact: true }))
+      .toHaveAttribute("href", href);
+  }
 });
 
 for (const slug of projectSlugs) {
