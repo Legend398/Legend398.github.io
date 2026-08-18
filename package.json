@@ -9,11 +9,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:pages": "node scripts/build-pages.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:e2e": "next build && playwright test --project=chromium",
-    "verify": "npm run lint && npm run typecheck && npm run test:e2e"
+    "verify": "npm run lint && npm run typecheck && npm run test:e2e",
+    "verify:pages": "npm run build:pages && node scripts/verify-pages-export.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",
