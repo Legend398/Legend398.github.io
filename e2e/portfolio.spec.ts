@@ -82,12 +82,15 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await page.goto("/");
 
   await expect(page).toHaveTitle(/Himanshu Kumar/);
-  await expect(page.getByText("Software Engineer · Agentic AI Engineer · Data Science", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", {
     level: 1,
-    name: "I build software with craft & proof.",
+    name: "Engineering software, AI agents, and data products.",
   })).toBeVisible();
-  await expect(page.getByText(/agentic developer tools, dependable products, and applied-ML interfaces/i)).toBeVisible();
+  await expect(page.getByText(/dependable software systems, agentic developer tools, and machine-learning applications/i)).toBeVisible();
+  await expect(page.getByText("I build software with craft & proof.", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Open to thoughtful engineering work." })).toBeVisible();
+  await expect(page.getByText("Have a useful product to build?", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Loop Engineering" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stocklane" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Credit Risk Explorer" })).toBeVisible();
@@ -97,7 +100,10 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await expect(page.getByText("Winner · LPU Innotek 2026", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Featured by LPU", { exact: true })).toHaveCount(0);
   await expect(page.locator("#certifications")).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "Résumé", exact: true }).first()).toHaveAttribute(
+  const resumeDownload = page.getByRole("link", { name: "Download résumé", exact: true }).first();
+  await expect(resumeDownload).toBeVisible();
+  await expect(resumeDownload).toHaveAttribute("download", "");
+  await expect(resumeDownload).toHaveAttribute(
     "href",
     "/Himanshu-Kumar-Resume-2026.pdf",
   );
@@ -321,24 +327,44 @@ test("keyboard navigation exposes the skip link and primary navigation", async (
   expect(linksAreLargeEnough).toBe(true);
 });
 
-test("project cards keep the real images simple and static", async ({ page }) => {
+test("project cards present real images as document sheets with restrained hover zoom", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
   const media = page.locator("[data-project-media]");
+  const sheets = page.locator("[data-project-sheet]");
   await media.first().scrollIntoViewIfNeeded();
   await expect(media).toHaveCount(3);
-  await expect(page.locator("[data-project-frame]")).toHaveCount(0);
-  await expect(page.locator("[data-frame-corner]")).toHaveCount(0);
-  await expect(page.locator("[data-project-frame-cue]")).toHaveCount(0);
+  await expect(sheets).toHaveCount(3);
+  await expect(page.locator("[data-project-sheet-bar]")).toHaveCount(3);
   await expect(media.locator("canvas")).toHaveCount(0);
   await expect(page.locator("[data-halftone-reveal]")).toHaveCount(0);
   for (let index = 0; index < 3; index += 1) {
     await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
   }
+
+  const firstSheet = sheets.first();
+  const firstImage = firstSheet.locator("[data-project-primary]");
+  const sheetBoxBefore = await firstSheet.boundingBox();
   await media.first().hover();
-  await expect(media.first().locator("[data-project-primary]")).toHaveCSS("transform", "none");
+  await expect.poll(() => firstImage.evaluate((element) => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+    return matrix.a;
+  })).toBeGreaterThanOrEqual(1.035);
+  await expect.poll(() => firstImage.evaluate((element) => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+    return matrix.a;
+  })).toBeLessThanOrEqual(1.055);
+  const sheetBoxAfter = await firstSheet.boundingBox();
+  expect(sheetBoxAfter).toEqual(sheetBoxBefore);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  const reducedImage = page.locator("[data-project-primary]").first();
+  await reducedImage.scrollIntoViewIfNeeded();
+  await page.locator("[data-project-media]").first().hover();
+  await expect(reducedImage).toHaveCSS("transform", "none");
 });
 
 test("homepage lists the seven unique certifications from both CVs", async ({ page }) => {

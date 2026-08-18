@@ -79,24 +79,25 @@
 
 .studioHeroMeta p:nth-child(3) {
   justify-self: end;
+  max-width: 440px;
 }
 
-.studioHeroMeta strong {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 1.65em;
-  line-height: 1;
+.studioHeroRole {
+  font-weight: 720;
+  letter-spacing: 0.025em;
+  max-width: 760px !important;
 }
 
 .studioHeroClaim {
   bottom: clamp(40px, 6vh, 68px);
   left: clamp(22px, 4vw, 56px);
   position: absolute;
-  width: min(800px, 68vw);
+  width: min(880px, 72vw);
   z-index: 24;
 }
 
 .studioHeroClaim > p,
-.studioHeroClaim > a,
+.studioHeroActions a,
 .studioHeroCoordinates {
   font: 650 9px / 1.45 var(--font-mono), monospace;
   letter-spacing: 0.09em;
@@ -109,32 +110,63 @@
 
 .studioHeroClaim h1 {
   font-family: var(--font-sans), sans-serif;
-  font-size: clamp(58px, 6.7vw, 108px);
-  font-weight: 820;
-  letter-spacing: -0.065em;
-  line-height: 0.86;
+  font-size: clamp(56px, 6vw, 92px);
+  font-weight: 760;
+  letter-spacing: -0.055em;
+  line-height: 0.91;
   margin-top: 16px;
-  text-transform: uppercase;
   text-wrap: balance;
 }
 
-.studioHeroClaim > a {
-  align-items: center;
-  background: white;
-  border: 1px solid white;
-  color: #07105c;
-  display: inline-flex;
-  justify-content: space-between;
+.studioHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
   margin-top: 24px;
-  min-height: 44px;
-  padding: 10px 12px;
-  transition: background 180ms ease, color 180ms ease;
-  width: 190px;
 }
 
-.studioHeroClaim > a:hover {
+.studioHeroActions a {
+  align-items: center;
+  border: 1px solid white;
+  display: inline-flex;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 10px 13px;
+  transition: background 180ms ease, color 180ms ease;
+  white-space: nowrap;
+  width: 202px;
+}
+
+.studioHeroActions a:first-child {
+  background: white;
+  color: #07105c;
+}
+
+.resumeAction {
   background: transparent;
   color: white;
+}
+
+.resumeAction svg {
+  fill: none;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  width: 1rem;
+}
+
+.studioHeroActions a:first-child:hover,
+.studioHeroActions a:first-child:focus-visible {
+  background: transparent;
+  color: white;
+}
+
+.resumeAction:hover,
+.resumeAction:focus-visible {
+  background: white;
+  color: #07105c;
 }
 
 .studioHeroCoordinates {
@@ -641,12 +673,24 @@
 }
 
 .mediaLink {
-  background: #07150f;
-  border: 1px solid rgba(16, 23, 19, 0.26);
-  box-shadow: 0 24px 62px -46px rgba(7, 21, 15, 0.7);
+  background: #f7f3e9;
+  box-shadow: 0 26px 54px -36px rgba(7, 21, 15, 0.7);
   display: block;
-  overflow: hidden;
+  isolation: isolate;
+  margin: 0 10px 10px 0;
+  overflow: visible;
   position: relative;
+}
+
+.mediaLink::before {
+  background: #d8d6ce;
+  border: 1px solid rgba(12, 21, 17, 0.18);
+  box-shadow: 0 10px 24px -18px rgba(7, 21, 15, 0.6);
+  content: "";
+  inset: 9px -9px -9px 9px;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
 }
 
 .projectLead .mediaLink {
@@ -660,24 +704,6 @@
 .mediaLink:focus-visible {
   outline: 3px solid var(--home-vermilion);
   outline-offset: 4px;
-}
-
-.projectNumber {
-  align-items: center;
-  background: var(--home-vermilion);
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.7rem;
-  height: 2.8rem;
-  justify-content: center;
-  left: 1.25rem;
-  letter-spacing: 0.04em;
-  position: absolute;
-  top: 1.25rem;
-  width: 2.8rem;
-  z-index: 5;
 }
 
 .projectCopy {
@@ -907,15 +933,15 @@
 
 .contact {
   background: linear-gradient(180deg, #f4f0e7 0%, rgba(244, 240, 231, 0.9) 55%, rgba(244, 240, 231, 0.68) 100%);
-  min-height: max(720px, 92svh);
-  padding-top: clamp(5rem, 9vw, 9rem);
+  min-height: max(600px, 75svh);
+  padding-top: clamp(4.5rem, 7vw, 7rem);
   position: relative;
 }
 
 .contactInner {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  min-height: max(640px, 80svh);
+  min-height: max(520px, 66svh);
   padding-bottom: 2rem;
   position: relative;
   z-index: 3;
@@ -928,8 +954,9 @@
 }
 
 .contact h2 {
-  font-size: clamp(4rem, 8.3vw, 9.5rem);
-  max-width: 9ch;
+  font-size: clamp(3rem, 5.4vw, 4.75rem);
+  line-height: 0.95;
+  max-width: 12ch;
 }
 
 .contactIntro {
@@ -1027,6 +1054,10 @@
     padding: 76px 18px 0;
   }
 
+  .studioHeroRole {
+    line-height: 1.55;
+  }
+
   .studioHeroMeta p:nth-child(2) {
     display: none;
   }
@@ -1043,12 +1074,21 @@
   }
 
   .studioHeroClaim h1 {
-    font-size: clamp(46px, 13vw, 70px);
-    line-height: 0.9;
+    font-size: clamp(42px, 11.2vw, 58px);
+    line-height: 0.94;
   }
 
-  .studioHeroClaim > a {
+  .studioHeroActions {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
     margin-top: 18px;
+  }
+
+  .studioHeroActions a {
+    font-size: 8px;
+    padding-inline: 0.65rem;
+    width: auto;
   }
 
   .studioHeroCoordinates {
@@ -1275,6 +1315,12 @@
   .projectLead .mediaLink,
   .projectCard:not(.projectLead) .mediaLink {
     aspect-ratio: 4 / 3;
+    margin: 0 5px 5px 0;
+  }
+
+  .mediaLink::before {
+    box-shadow: 0 8px 18px -15px rgba(7, 21, 15, 0.54);
+    inset: 5px -5px -5px 5px;
   }
 
   .projectCopy h3 {
@@ -1324,14 +1370,14 @@
   }
 
   .contact {
-    min-height: 760px;
-    padding-top: 5rem;
+    min-height: 620px;
+    padding-top: 4.5rem;
   }
 
   .contactInner {
     display: flex;
     flex-direction: column;
-    min-height: 680px;
+    min-height: 540px;
   }
 
   .contactCopy {
@@ -1339,8 +1385,9 @@
   }
 
   .contact h2 {
-    font-size: clamp(3.5rem, 16vw, 5.4rem);
-    max-width: 8ch;
+    font-size: clamp(2.4rem, 10.5vw, 3.15rem);
+    line-height: 0.98;
+    max-width: 11ch;
   }
 
   .email {
@@ -1365,6 +1412,12 @@
 
   .footer > a {
     grid-row: 2;
+  }
+}
+
+@media (max-width: 359px) {
+  .studioHeroActions {
+    grid-template-columns: 1fr;
   }
 }
 

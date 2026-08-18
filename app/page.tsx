@@ -30,18 +30,28 @@ export default function HomePage() {
           <div className={styles.kineticGrid} aria-hidden="true" />
 
           <div className={styles.studioHeroMeta}>
-            <p><strong>Software &amp;</strong><br />AI Engineering</p>
-            <p>Thinking in systems.<br />Shipping with care.</p>
+            <p className={styles.studioHeroRole}>SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE</p>
+            <p>System design first.<br />Tested delivery.</p>
             <p>
-              I&apos;m Himanshu Kumar. I build agentic developer tools, dependable products,
-              and applied-ML interfaces.
+              I build dependable software systems, agentic developer tools, and machine-learning
+              applications—from interface and architecture to testing and delivery.
             </p>
           </div>
 
           <div className={styles.studioHeroClaim}>
-            <p>Software engineer · India · 2026</p>
-            <h1 id="hero-title">I build software<br />with craft &amp; proof.</h1>
-            <a data-primary-action href="#work">Selected work <span aria-hidden="true">↓</span></a>
+            <p>Himanshu Kumar · India · 2026</p>
+            <h1 id="hero-title">Engineering software, AI agents, and data products.</h1>
+            <div className={styles.studioHeroActions}>
+              <a data-primary-action href="#work">
+                View selected work <span aria-hidden="true">↓</span>
+              </a>
+              <a aria-label="Download résumé" className={styles.resumeAction} download href={profile.resume}>
+                Download résumé
+                <svg aria-hidden="true" viewBox="0 0 20 20">
+                  <path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 16h12" />
+                </svg>
+              </a>
+            </div>
           </div>
 
           <span className={styles.studioHeroCoordinates} aria-hidden="true">Systems / software / AI</span>
@@ -112,13 +122,14 @@ export default function HomePage() {
                     >
                       <ProjectMedia
                         alt={project.imageAlt}
+                        label={project.title}
+                        number={project.number}
                         primary={project.image}
                         priority={index === 0}
                         sizes={index === 0
                           ? "(max-width: 760px) 100vw, 72vw"
                           : "(max-width: 760px) 100vw, 46vw"}
                       />
-                      <span className={styles.projectNumber} aria-hidden="true">{project.number}</span>
                     </Link>
 
                     <div className={styles.projectCopy}>
@@ -223,10 +234,10 @@ export default function HomePage() {
           <div className={`${styles.sectionFrame} ${styles.contactInner}`}>
             <div className={styles.contactCopy}>
               <p className={styles.kicker}><span>05</span> Contact</p>
-              <h2 id="contact-title">Have a useful product to build?</h2>
+              <h2 id="contact-title">Open to thoughtful engineering work.</h2>
               <p className={styles.contactIntro}>
-                I&apos;m open to software engineering, agentic AI, and data science roles and projects. Send me the
-                problem, the people it should help, and what already exists.
+                I&apos;m open to software engineering, agentic AI, and data science roles. If you&apos;re building a
+                product, improving a system, or assembling an engineering team, I&apos;d be glad to hear about it.
               </p>
               <a className={styles.email} href={`mailto:${profile.email}`}>
                 {profile.email} <span aria-hidden="true">↗</span>

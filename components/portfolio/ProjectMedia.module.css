@@ -1,20 +1,71 @@
 .root {
-  background: #d9ddd5;
-  border: 1px solid rgba(7, 21, 15, 0.22);
+  background: #f7f3e9;
+  border: 1px solid rgba(12, 21, 17, 0.28);
   box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
   overflow: hidden;
-  padding: clamp(0.3rem, 0.5vw, 0.48rem);
+  padding: clamp(0.45rem, 0.75vw, 0.72rem);
   position: relative;
+}
+
+.sheetBar {
+  align-items: center;
+  color: rgba(16, 23, 19, 0.62);
+  display: flex;
+  font: 650 clamp(0.55rem, 0.6vw, 0.66rem) / 1.2 var(--font-mono), monospace;
+  justify-content: space-between;
+  letter-spacing: 0.07em;
+  min-height: clamp(1.8rem, 2.4vw, 2.2rem);
+  padding: 0 0.2rem;
+  text-transform: uppercase;
+}
+
+.sheetBar span:last-child {
+  color: #ef4e32;
 }
 
 .imageWindow {
   background: #d9ddd5;
-  height: 100%;
+  border: 1px solid rgba(12, 21, 17, 0.16);
+  min-height: 0;
   overflow: hidden;
   position: relative;
 }
 
 .image {
-  object-fit: cover;
+  object-fit: contain;
+  transform: scale(1.001);
+  transform-origin: center;
+  transition:
+    filter 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .root:hover .image {
+    filter: saturate(1.04) contrast(1.02);
+    transform: scale(1.045);
+  }
+}
+
+@media (max-width: 760px) {
+  .root {
+    padding: 0.35rem;
+  }
+
+  .sheetBar {
+    min-height: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image,
+  .root:hover .image {
+    filter: none;
+    transform: none;
+    transition: none;
+  }
 }
