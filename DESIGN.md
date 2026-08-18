@@ -59,6 +59,16 @@ A warm editorial engineering portfolio built around one clear glass word: `BUILD
 - Total desktop page target: roughly 6–7 viewport heights with no unexplained empty viewport.
 - Mobile is recomposed, not a stacked desktop runway: readable glass word, one-column project media, 72–112px section gaps, no sticky multi-viewport scenes.
 
+### Mobile hero contract
+
+- The phone hero is a dedicated viewport scene, not the desktop grid collapsed to one column.
+- At 390px, the role begins near 80px, the three-line headline near 123px, the glass field occupies roughly 350–500px, and the intro/actions anchor the lower viewport.
+- `BUILD` is nearly viewport-wide with only controlled edge bleed. WebGL and reduced-motion fallback occupy the same field; motion preference must never change composition.
+- The header keeps the HK mark and name but replaces the desktop navigation with a plain two-line 44px menu target.
+- Phone actions use short visible labels while preserving the full accessible names. Neither label may wrap.
+- The dark About background peeks into the first viewport to signal continuity. The hero has no arbitrary fixed spacer.
+- Mobile WebGL uses DPR 1, press/drag-only touch refraction, demand rendering, and a static glass fallback until the first real frame is ready.
+
 ## Glass implementation
 
 - One beveled `TextGeometry` mesh using the bundled permitted typeface JSON.

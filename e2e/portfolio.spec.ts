@@ -92,6 +92,51 @@ test("mobile homepage loads all project images without horizontal overflow", asy
   await expectNoHorizontalOverflow(page);
 });
 
+test("mobile hero is an authored scene instead of stacked desktop blocks", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const hero = page.locator('[data-glass-zone="hero"]');
+    const role = page.locator("[data-hero-role]");
+    const title = page.locator("[data-hero-title-block]");
+    const glassSlot = page.locator("[data-mobile-glass-slot]");
+    const fallbackWord = page.locator("[data-glass-fallback] span");
+    const bottom = page.locator("[data-hero-bottom]");
+    const about = page.locator("#about");
+
+    await expect(glassSlot).toBeVisible();
+    const boxes = await Promise.all([
+      hero.boundingBox(),
+      role.boundingBox(),
+      title.boundingBox(),
+      glassSlot.boundingBox(),
+      fallbackWord.boundingBox(),
+      bottom.boundingBox(),
+      about.boundingBox(),
+    ]);
+    const [heroBox, roleBox, titleBox, slotBox, wordBox, bottomBox, aboutBox] = boxes;
+    expect(heroBox && roleBox && titleBox && slotBox && wordBox && bottomBox && aboutBox).toBeTruthy();
+    if (!heroBox || !roleBox || !titleBox || !slotBox || !wordBox || !bottomBox || !aboutBox) continue;
+
+    expect(roleBox.y).toBeGreaterThanOrEqual(72);
+    expect(titleBox.y).toBeGreaterThan(roleBox.y + roleBox.height);
+    expect(slotBox.y).toBeGreaterThan(titleBox.y + titleBox.height);
+    expect(slotBox.height).toBeGreaterThanOrEqual(150);
+    expect(bottomBox.y).toBeGreaterThan(slotBox.y + slotBox.height);
+    expect(wordBox.y).toBeGreaterThanOrEqual(slotBox.y - 24);
+    expect(wordBox.y + wordBox.height).toBeLessThanOrEqual(slotBox.y + slotBox.height + 24);
+    expect(aboutBox.y).toBeLessThanOrEqual(viewport.height - 16);
+    expect(heroBox.height).toBeGreaterThanOrEqual(760);
+    await expectNoHorizontalOverflow(page);
+  }
+});
+
 test("interactive glass word changes only on direct contact and settles after pointer exit", async ({ page }) => {
   await page.addInitScript(() => {
     const state = globalThis as typeof globalThis & { __heroDrawCalls?: number };
@@ -191,7 +236,7 @@ test("keyboard navigation exposes the skip link and mobile menu", async ({ page 
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#main-content$/);
 
-  const menu = page.locator("details.mobileNav");
+  const menu = page.locator("[data-mobile-nav]");
   await menu.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(menu).toHaveAttribute("open", "");

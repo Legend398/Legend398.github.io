@@ -174,7 +174,7 @@
 
 @media (max-width: 760px) {
   .header {
-    height: 64px;
+    height: 60px;
   }
 
   .inner {
@@ -182,17 +182,67 @@
   }
 
   .brandMark {
-    height: 38px;
-    width: 38px;
+    height: 34px;
+    width: 34px;
   }
 
-  .brandName,
   .desktopNav {
     display: none;
   }
 
+  .brandName {
+    display: inline;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
   .mobileNav {
     display: block;
+  }
+
+  .mobileNav summary {
+    border: 0;
+    border-radius: 0;
+    font-size: 0;
+    height: 44px;
+    position: relative;
+    width: 44px;
+  }
+
+  .mobileNav summary::before,
+  .mobileNav summary::after {
+    background: currentColor;
+    content: "";
+    height: 2px;
+    left: 8px;
+    position: absolute;
+    transition: transform 180ms ease, top 180ms ease;
+    width: 28px;
+  }
+
+  .mobileNav summary::before {
+    top: 17px;
+  }
+
+  .mobileNav summary::after {
+    top: 25px;
+  }
+
+  .mobileNav[open] summary::before {
+    top: 21px;
+    transform: rotate(45deg);
+  }
+
+  .mobileNav[open] summary::after {
+    top: 21px;
+    transform: rotate(-45deg);
+  }
+
+  .mobileNav nav {
+    min-width: calc(100vw - 24px);
+    right: 12px;
+    top: 54px;
   }
 }
 
@@ -201,4 +251,3 @@
     transition: none;
   }
 }
-

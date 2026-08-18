@@ -101,15 +101,26 @@
 }
 
 @media (max-width: 760px) {
-  .fallback {
+  .stage[data-scene-zone="hero"] .fallback {
     align-items: flex-start;
     justify-content: center;
-    padding: 8.75rem 0 0;
+    padding: 0;
   }
 
-  .fallbackWord {
-    font-size: clamp(5.5rem, 30vw, 8rem);
-    transform: none;
+  .stage[data-scene-zone="hero"] .fallbackWord {
+    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.9);
+    background:
+      linear-gradient(112deg, transparent 32%, rgba(97, 188, 163, 0.3) 44%, rgba(255, 255, 255, 0.2) 50%, rgba(70, 151, 130, 0.24) 57%, transparent 68%),
+      linear-gradient(138deg, rgba(255, 255, 255, 0.9) 6%, rgba(202, 232, 223, 0.46) 34%, rgba(244, 240, 231, 0.18) 56%, rgba(162, 211, 198, 0.38) 86%);
+    background-clip: text;
+    filter:
+      drop-shadow(0 0 1px rgba(6, 63, 50, 0.58))
+      drop-shadow(0 18px 22px rgba(21, 73, 59, 0.12));
+    font-size: 36vw;
+    left: 50%;
+    position: absolute;
+    top: clamp(22.5rem, 43svh, 24rem);
+    transform: translateX(-50%) scaleY(1.08);
   }
 
   .stage[data-scene-zone="contact"] .fallbackWord {

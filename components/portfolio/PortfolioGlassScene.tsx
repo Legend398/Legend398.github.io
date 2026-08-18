@@ -23,6 +23,7 @@ export type PortfolioGlassSceneProps = {
   compact: boolean;
   interaction: RefObject<GlassInteractionState>;
   onContactChange: (contact: boolean) => void;
+  onReady: () => void;
   registerFrameRequester: (requestFrame?: () => void) => void;
 };
 
@@ -124,14 +125,17 @@ const glassFragmentShader = /* glsl */ `
     vec3 lightDirection = normalize(vec3(-0.42, 0.68, 0.62));
     vec3 reflectedLight = reflect(-lightDirection, normal);
     float specular = pow(max(dot(reflectedLight, viewDirection), 0.0), 54.0);
-    vec3 edgeTint = uZone > 0.5 ? vec3(0.08, 0.18, 0.15) : vec3(0.07, 0.19, 0.16);
-    vec3 color = mix(refracted, edgeTint, 0.025 + fresnel * 0.29);
-    color += vec3(0.94, 1.0, 0.99) * fresnel * 0.43;
-    color += vec3(1.0) * specular * 0.68;
+    vec3 edgeTint = uZone > 0.5 ? vec3(0.045, 0.2, 0.17) : vec3(0.035, 0.24, 0.19);
+    vec3 absorbed = refracted * vec3(0.3, 0.64, 0.55);
+    float lowerShade = 1.0 - smoothstep(-0.65, 0.35, normal.y);
+    vec3 color = mix(refracted, absorbed, 0.3);
+    color = mix(color, edgeTint, 0.075 + fresnel * 0.36 + lowerShade * 0.085);
+    color += vec3(0.84, 1.0, 0.96) * fresnel * 0.2;
+    color += vec3(1.0) * specular * 0.56;
     color += vec3(0.22, 0.78, 0.7) * lensRing * 0.16;
     color += vec3(1.0, 0.51, 0.34) * lensRing * 0.045;
 
-    float alpha = (0.5 + fresnel * 0.46 + specular * 0.2 + lens * 0.035) * uOpacity;
+    float alpha = (0.68 + fresnel * 0.26 + specular * 0.12 + lens * 0.035) * uOpacity;
     gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.98));
   }
 `;
@@ -145,6 +149,7 @@ function GlassWord({
   compact,
   interaction,
   onContactChange,
+  onReady,
   registerFrameRequester,
 }: PortfolioGlassSceneProps) {
   const group = useRef<THREE.Group>(null);
@@ -152,6 +157,7 @@ function GlassWord({
   const contactTarget = useRef(0);
   const contactValue = useRef(0);
   const contactStatus = useRef(false);
+  const readyReported = useRef(false);
   const invalidate = useThree((state) => state.invalidate);
   const renderTarget = useFBO({ depthBuffer: false, stencilBuffer: false, samples: 0 });
   const drawingBufferSize = useMemo(() => new THREE.Vector2(), []);
@@ -232,20 +238,26 @@ function GlassWord({
     const motion = interaction.current;
     const inHero = motion.zone === "hero";
     const progress = clamp(motion.progress);
-    const targetX = compact ? 0 : (inHero ? 1.68 : 0.3);
+    const targetX = compact
+      ? (inHero ? 0.04 + progress * 0.14 : 0)
+      : (inHero ? 1.68 : 0.3);
     const targetY = compact
-      ? (inHero ? 1.05 + progress * 0.46 : -1.55)
+      ? (inHero ? 0 + progress * 0.9 : -1.55)
       : (inHero ? 0.96 + progress * 0.92 : -1.15);
     const targetScaleX = compact
-      ? (inHero ? 0.38 - progress * 0.025 : 0.46)
+      ? (inHero ? 0.43 - progress * 0.04 : 0.46)
       : (inHero ? 0.62 - progress * 0.045 : 1.14);
     const targetScaleY = compact
-      ? (inHero ? 0.38 - progress * 0.025 : 0.46)
+      ? (inHero ? 0.53 - progress * 0.05 : 0.46)
       : (inHero ? 0.84 - progress * 0.06 : 1.14);
     const targetScaleZ = compact
-      ? (inHero ? 0.38 - progress * 0.025 : 0.46)
+      ? (inHero ? 0.48 - progress * 0.04 : 0.46)
       : (inHero ? 0.76 - progress * 0.05 : 1.14);
     const targetOpacity = inHero ? 1 - progress * 0.7 : 0.44 + progress * 0.28;
+    const targetRotationY = compact && inHero
+      ? -0.06 + progress * 0.14
+      : (inHero ? -0.11 : 0.08);
+    const targetRotationZ = compact && inHero ? -0.018 + progress * 0.055 : 0;
 
     group.current.position.x = THREE.MathUtils.damp(group.current.position.x, targetX, 8.5, delta);
     group.current.position.y = THREE.MathUtils.damp(group.current.position.y, targetY, 8.5, delta);
@@ -253,7 +265,8 @@ function GlassWord({
     group.current.scale.y = THREE.MathUtils.damp(group.current.scale.y, targetScaleY, 8.5, delta);
     group.current.scale.z = THREE.MathUtils.damp(group.current.scale.z, targetScaleZ, 8.5, delta);
     group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, -0.08, 8.5, delta);
-    group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, inHero ? -0.11 : 0.08, 8.5, delta);
+    group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, targetRotationY, 8.5, delta);
+    group.current.rotation.z = THREE.MathUtils.damp(group.current.rotation.z, targetRotationZ, 8.5, delta);
 
     let directlyOverWord = false;
     if (motion.pointerActive) {
@@ -286,6 +299,10 @@ function GlassWord({
     gl.clear(true, true, true);
     gl.render(scene, camera);
     gl.autoClear = previousAutoClear;
+    if (!readyReported.current) {
+      readyReported.current = true;
+      onReady();
+    }
 
     const unsettled = Math.max(
       Math.abs(contactValue.current - contactTarget.current),
@@ -294,6 +311,8 @@ function GlassWord({
       Math.abs(group.current.scale.x - targetScaleX),
       Math.abs(group.current.scale.y - targetScaleY),
       Math.abs(group.current.scale.z - targetScaleZ),
+      Math.abs(group.current.rotation.y - targetRotationY),
+      Math.abs(group.current.rotation.z - targetRotationZ),
     );
     if (unsettled > 0.001) invalidate();
   }, 1);
@@ -301,10 +320,10 @@ function GlassWord({
 
   return (
     <group
-      position={[compact ? 0 : 1.68, compact ? 1.05 : 0.96, 0]}
+      position={[compact ? 0.04 : 1.68, compact ? 0 : 0.96, 0]}
       ref={group}
-      rotation={[-0.08, -0.11, 0]}
-      scale={compact ? 0.38 : [0.62, 0.84, 0.76]}
+      rotation={[-0.08, compact ? -0.06 : -0.11, compact ? -0.018 : 0]}
+      scale={compact ? [0.43, 0.53, 0.48] : [0.62, 0.84, 0.76]}
     >
       <mesh geometry={geometry} material={material} ref={mesh} />
     </group>
@@ -316,7 +335,7 @@ export function PortfolioGlassScene(props: PortfolioGlassSceneProps) {
     <Canvas
       aria-hidden="true"
       camera={{ fov: 35, near: 0.1, far: 30, position: [0, 0, 8] }}
-      dpr={props.compact ? 0.72 : 0.82}
+      dpr={props.compact ? 1 : 0.82}
       fallback={null}
       frameloop="demand"
       gl={{

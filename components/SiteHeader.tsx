@@ -75,7 +75,7 @@ export function SiteHeader() {
           </a>
         </nav>
 
-        <details className={`mobileNav ${styles.mobileNav}`} ref={mobileMenu}>
+        <details className={styles.mobileNav} data-mobile-nav ref={mobileMenu}>
           <summary>Menu</summary>
           <nav aria-label="Mobile navigation">
             {navItems.map((item) => (

@@ -39,7 +39,7 @@ function StaticGlassWord() {
 
 const PortfolioGlassScene = dynamic<PortfolioGlassSceneProps>(
   () => import("./PortfolioGlassScene").then((module) => module.PortfolioGlassScene),
-  { ssr: false, loading: () => <StaticGlassWord /> },
+  { ssr: false, loading: () => null },
 );
 
 function clamp(value: number, minimum = 0, maximum = 1) {
@@ -72,6 +72,7 @@ export function PortfolioExperience() {
   const frameRequester = useRef<() => void>(() => undefined);
   const [contact, setContact] = useState(false);
   const [documentVisible, setDocumentVisible] = useState(true);
+  const [sceneReady, setSceneReady] = useState(false);
   const [zone, setZone] = useState<SceneZone>("hero");
   const renderScene = webGLSupported && !reducedMotion;
   const active = zone !== "none" && documentVisible;
@@ -79,6 +80,7 @@ export function PortfolioExperience() {
   const registerFrameRequester = useCallback((requestFrame?: () => void) => {
     frameRequester.current = requestFrame ?? (() => undefined);
   }, []);
+  const markSceneReady = useCallback(() => setSceneReady(true), []);
 
   useEffect(() => {
     const syncVisibility = () => setDocumentVisible(document.visibilityState === "visible");
@@ -136,16 +138,36 @@ export function PortfolioExperience() {
       return;
     }
     let scheduledFrame = 0;
-    const updatePointer = (event: PointerEvent) => {
-      interaction.current.pointerActive = event.pointerType !== "touch";
-      interaction.current.pointerX = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
-      interaction.current.pointerY = -(event.clientY / Math.max(1, window.innerHeight)) * 2 + 1;
+    let touchPointerActive = false;
+    const requestPointerFrame = () => {
       if (!scheduledFrame) {
         scheduledFrame = window.requestAnimationFrame(() => {
           scheduledFrame = 0;
           frameRequester.current();
         });
       }
+    };
+    const updatePointerPosition = (event: PointerEvent) => {
+      interaction.current.pointerX = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      interaction.current.pointerY = -(event.clientY / Math.max(1, window.innerHeight)) * 2 + 1;
+    };
+    const updatePointer = (event: PointerEvent) => {
+      updatePointerPosition(event);
+      interaction.current.pointerActive = event.pointerType !== "touch" || touchPointerActive;
+      requestPointerFrame();
+    };
+    const startTouchPointer = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") return;
+      touchPointerActive = true;
+      updatePointerPosition(event);
+      interaction.current.pointerActive = true;
+      requestPointerFrame();
+    };
+    const endTouchPointer = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") return;
+      touchPointerActive = false;
+      interaction.current.pointerActive = false;
+      requestPointerFrame();
     };
     const clearPointer = () => {
       interaction.current.pointerActive = false;
@@ -156,10 +178,16 @@ export function PortfolioExperience() {
     };
 
     window.addEventListener("pointermove", updatePointer, { passive: true });
+    window.addEventListener("pointerdown", startTouchPointer, { passive: true });
+    window.addEventListener("pointerup", endTouchPointer, { passive: true });
+    window.addEventListener("pointercancel", endTouchPointer, { passive: true });
     window.addEventListener("pointerout", handlePointerOut, { passive: true });
     window.addEventListener("blur", clearPointer);
     return () => {
       window.removeEventListener("pointermove", updatePointer);
+      window.removeEventListener("pointerdown", startTouchPointer);
+      window.removeEventListener("pointerup", endTouchPointer);
+      window.removeEventListener("pointercancel", endTouchPointer);
       window.removeEventListener("pointerout", handlePointerOut);
       window.removeEventListener("blur", clearPointer);
       if (scheduledFrame) window.cancelAnimationFrame(scheduledFrame);
@@ -179,11 +207,13 @@ export function PortfolioExperience() {
     >
       {renderScene ? (
         <div className={styles.canvasWrap} aria-hidden="true">
+          {!sceneReady ? <StaticGlassWord /> : null}
           <PortfolioGlassScene
             active={active}
             compact={compact}
             interaction={interaction}
             onContactChange={setContact}
+            onReady={markSceneReady}
             registerFrameRequester={registerFrameRequester}
           />
         </div>

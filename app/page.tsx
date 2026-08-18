@@ -62,9 +62,9 @@ export default function HomePage() {
 
         <section className={styles.hero} data-glass-zone="hero" aria-labelledby="hero-title">
           <div className={`${styles.sectionFrame} ${styles.heroInner}`}>
-            <p className={styles.role}>{profile.role}</p>
+            <p className={styles.role} data-hero-role>{profile.role}</p>
 
-            <div className={styles.heroTitleBlock}>
+            <div className={styles.heroTitleBlock} data-hero-title-block>
               <p className={styles.edition}>Portfolio / 2026</p>
               <h1 id="hero-title" aria-label="Software, AI, and data—built to be used.">
                 <span aria-hidden="true">Software, AI,</span>
@@ -73,16 +73,22 @@ export default function HomePage() {
               </h1>
             </div>
 
-            <div className={styles.heroBottom}>
+            <div className={styles.mobileGlassSlot} data-mobile-glass-slot aria-hidden="true" />
+
+            <div className={styles.heroBottom} data-hero-bottom>
               <p className={styles.heroIntro}>
                 I design agentic AI tools, reliable software products, and clear machine-learning applications.
               </p>
               <div className={styles.heroActions}>
-                <a className={styles.primaryAction} data-primary-action href="#work">
-                  View selected work <span aria-hidden="true">↓</span>
+                <a aria-label="View selected work" className={styles.primaryAction} data-primary-action href="#work">
+                  <span className={styles.desktopActionText}>View selected work</span>
+                  <span aria-hidden="true" className={styles.mobileActionText}>Selected work</span>
+                  <span aria-hidden="true">↓</span>
                 </a>
-                <a className={styles.secondaryAction} data-primary-action href={profile.resume} download>
-                  Download résumé <span aria-hidden="true">↓</span>
+                <a aria-label="Download résumé" className={styles.secondaryAction} data-primary-action href={profile.resume} download>
+                  <span className={styles.desktopActionText}>Download résumé</span>
+                  <span aria-hidden="true" className={styles.mobileActionText}>Résumé</span>
+                  <span aria-hidden="true">↓</span>
                 </a>
               </div>
               <p className={styles.interactionNote}>Move across BUILD to bend the light</p>
