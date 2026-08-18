@@ -134,7 +134,7 @@ test("homepage uses real project images and removes obsolete showcase UI", async
   await page.goto("/");
 
   await expectLoadedImages(page);
-  await expect(page.locator("[data-project-secondary]")).toHaveCount(3);
+  await expect(page.locator("[data-project-secondary]")).toHaveCount(0);
   await expect(page.locator(".systemsInterlude")).toHaveCount(0);
   await expect(page.locator(".finaleExperience, [data-finale-mode]")).toHaveCount(0);
   await expect(page.locator(".homeProject .creditMock, .homeProject .creditShelfVisual")).toHaveCount(0);
@@ -339,9 +339,20 @@ test("desktop project media mount exactly three halftone reveal roots", async ({
   await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
   await expect(media.first().locator('[data-halftone-reveal][data-halftone-mode="webgl"]')).toHaveCount(1);
   await expect(media.first().locator("[data-halftone-reveal] canvas")).toBeVisible();
+  const expectedSources = [
+    "/work/loop-engineering-showcase.jpeg",
+    "/work/stocklane.png",
+    "/work/credit-risk-dashboard-scored.png",
+  ];
+  for (const [index, source] of expectedSources.entries()) {
+    const reveal = media.nth(index).locator("[data-halftone-reveal]");
+    await expect(reveal).toHaveAttribute("data-halftone-print-src", source);
+    await expect(reveal).toHaveAttribute("data-halftone-reveal-src", source);
+    await expect(reveal).toHaveAttribute("data-halftone-optics", "clear");
+  }
 });
 
-test("hovering project media reveals the image without shifting its title or link", async ({ page }) => {
+test("hovering project media reveals the same image clearly without shifting its title or link", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
@@ -354,9 +365,10 @@ test("hovering project media reveals the image without shifting its title or lin
   const media = project.locator("[data-project-media]");
   await expect(reveal).toHaveAttribute("data-halftone-state", "idle");
   await expect(reveal).toHaveAttribute("data-halftone-radius", "0.52");
-  await expect(project.locator("[data-project-reveal-hint]")).toContainText("Move across image to reveal");
+  await expect(project.locator("[data-project-reveal-hint]")).toContainText("Move to see clearly");
   await expect(reveal).toHaveAttribute("data-halftone-print-src", "/work/loop-engineering-showcase.jpeg");
-  await expect(reveal).toHaveAttribute("data-halftone-reveal-src", "/work/loop-engineering-system.png");
+  await expect(reveal).toHaveAttribute("data-halftone-reveal-src", "/work/loop-engineering-showcase.jpeg");
+  await expect(reveal).toHaveAttribute("data-halftone-optics", "clear");
   const frameBefore = Number(await reveal.getAttribute("data-halftone-frame"));
   const titleBefore = await title.boundingBox();
   const linkBefore = await link.boundingBox();
@@ -394,6 +406,7 @@ test("reduced motion keeps decoded project images and skips halftone WebGL canva
   await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
   await expect(page.locator('[data-halftone-reveal][data-halftone-mode="fallback"]')).toHaveCount(3);
   await expect(page.locator("[data-halftone-reveal] canvas")).toHaveCount(0);
+  await expect(page.locator("[data-project-reveal-hint]").first()).toBeHidden();
   for (let index = 0; index < 3; index += 1) {
     await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
   }
@@ -418,6 +431,7 @@ test("mobile keeps decoded project images and skips halftone WebGL canvases", as
     await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
     await expect(page.locator('[data-halftone-reveal][data-halftone-mode="fallback"]')).toHaveCount(3);
     await expect(page.locator("[data-halftone-reveal] canvas")).toHaveCount(0);
+    await expect(page.locator("[data-project-reveal-hint]").first()).toBeHidden();
     for (let index = 0; index < 3; index += 1) {
       await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
     }

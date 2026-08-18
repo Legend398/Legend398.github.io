@@ -9,8 +9,6 @@ type ProjectMediaProps = {
   alt: string;
   primary: string;
   priority?: boolean;
-  secondary: string;
-  secondaryAlt: string;
   sizes: string;
 };
 
@@ -22,8 +20,6 @@ export function ProjectMedia({
   alt,
   primary,
   priority = false,
-  secondary,
-  secondaryAlt,
   sizes,
 }: ProjectMediaProps) {
   const root = useRef<HTMLDivElement>(null);
@@ -80,38 +76,26 @@ export function ProjectMedia({
             src={primary}
           />
         </div>
-        <div className={styles.secondaryPreload} aria-hidden="true">
-          <Image
-            alt=""
-            data-project-secondary
-            fill
-            quality={88}
-            sizes={sizes}
-            src={secondary}
-          />
-        </div>
         <HalftoneReveal
           className={styles.halftone}
           printSrc={primary}
-          revealSrc={secondary}
-          revealMix={1}
           inkColor="#0b221b"
           paperColor="#eee9dd"
           dotDensity={74}
           dotSize={0.94}
           angle={45}
           revealRadius={0.52}
-          edge={0.76}
+          edge={0.86}
           follow={0.18}
+          idleReveal={0.28}
         />
         <span className={styles.revealHint} data-project-reveal-hint aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
             <circle cx="12" cy="12" r="7" />
             <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
           </svg>
-          Move across image to reveal
+          Move to see clearly
         </span>
-        <span className={styles.imageDescription} data-secondary-alt={secondaryAlt} aria-hidden="true" />
       </div>
     </div>
   );

@@ -205,21 +205,14 @@ void main() {
     printColor = mix(uPaper, uInk, dotCoverage);
   }
 
-  float normalizedDistance = clamp(distanceToPointer / radius, 0.0, 1.0);
-  float bend = normalizedDistance * normalizedDistance * normalizedDistance * normalizedDistance;
-  vec2 direction = distanceToPointer > 1e-5 ? delta / distanceToPointer : vec2(0.0);
-  vec2 offset = direction * bend * radius * 0.22 / aspect;
-  vec2 chromaticOffset = direction * bend * 0.0045 / aspect;
-  vec3 primarySharp = gradeRGB(vec3(
-    texture(tPrint, clamp(coverUv(vUv - offset - chromaticOffset, uPrintSize), 0.0, 1.0)).r,
-    texture(tPrint, clamp(coverUv(vUv - offset, uPrintSize), 0.0, 1.0)).g,
-    texture(tPrint, clamp(coverUv(vUv - offset + chromaticOffset, uPrintSize), 0.0, 1.0)).b
-  ));
-  vec3 secondarySharp = gradeRGB(vec3(
-    texture(tReveal, clamp(coverUv(vUv - offset - chromaticOffset, uRevealSize), 0.0, 1.0)).r,
-    texture(tReveal, clamp(coverUv(vUv - offset, uRevealSize), 0.0, 1.0)).g,
-    texture(tReveal, clamp(coverUv(vUv - offset + chromaticOffset, uRevealSize), 0.0, 1.0)).b
-  ));
+  vec3 primarySharp = gradeRGB(texture(
+    tPrint,
+    clamp(coverUv(vUv, uPrintSize), 0.0, 1.0)
+  ).rgb);
+  vec3 secondarySharp = gradeRGB(texture(
+    tReveal,
+    clamp(coverUv(vUv, uRevealSize), 0.0, 1.0)
+  ).rgb);
   vec3 sharpColor = mix(primarySharp, secondarySharp, clamp(uRevealMix, 0.0, 1.0));
 
   fragColor = vec4(mix(printColor, sharpColor, focus), 1.0);
@@ -554,6 +547,7 @@ export default function HalftoneReveal({
       className={[styles.root, className].filter(Boolean).join(" ")}
       data-halftone-frame="0"
       data-halftone-mode={renderMode}
+      data-halftone-optics="clear"
       data-halftone-ready="false"
       data-halftone-radius={String(revealRadius)}
       data-halftone-reveal

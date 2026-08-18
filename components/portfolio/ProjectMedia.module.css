@@ -22,22 +22,11 @@
   object-fit: cover;
 }
 
-.primary,
-.secondaryPreload {
+.primary {
   height: 100%;
   inset: 0;
   position: absolute;
   width: 100%;
-}
-
-.secondaryPreload {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-.imageDescription {
-  display: none;
 }
 
 .halftone {
@@ -80,13 +69,18 @@
   transform: translate3d(0, 6px, 0);
 }
 
+.motionPlane:has(.halftone[data-halftone-mode="fallback"]) .revealHint,
+.motionPlane:has(.halftone[data-halftone-ready="false"]) .revealHint {
+  opacity: 0;
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .motionPlane {
     transform: none;
     transition: none;
   }
 
-  .secondaryPreload,
   .halftone,
   .revealHint {
     display: none;

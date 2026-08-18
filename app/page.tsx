@@ -3,7 +3,7 @@ import { GlassWordScene } from "@/components/GlassWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
-import { capabilities, profile, projects, type ProjectVisualKind } from "@/lib/portfolio";
+import { capabilities, profile, projects } from "@/lib/portfolio";
 import styles from "./HomePage.module.css";
 
 const jsonLd = {
@@ -37,21 +37,6 @@ const recognition = [
     detail: "Lovely Professional University · CGPA 7.87",
   },
 ] as const;
-
-const projectMedia: Record<ProjectVisualKind, { secondary: string; secondaryAlt: string }> = {
-  loop: {
-    secondary: "/work/loop-engineering-system.png",
-    secondaryAlt: "Loop Engineering architecture showing the task, implementation, verification, and checker stages.",
-  },
-  stocklane: {
-    secondary: "/work/stocklane-order.png",
-    secondaryAlt: "Stocklane order view showing an inventory reservation and its status.",
-  },
-  credit: {
-    secondary: "/work/credit-risk-shap.png",
-    secondaryAlt: "A SHAP summary from the Credit Risk Explorer explaining which inputs influenced the model.",
-  },
-};
 
 export default function HomePage() {
   return (
@@ -131,9 +116,7 @@ export default function HomePage() {
             </header>
 
             <div className={styles.projectGrid}>
-              {projects.map((project, index) => {
-                const media = projectMedia[project.visual];
-                return (
+              {projects.map((project, index) => (
                   <article
                     className={`${styles.projectCard} ${index === 0 ? styles.projectLead : ""}`}
                     data-project-card
@@ -149,8 +132,6 @@ export default function HomePage() {
                         alt={project.imageAlt}
                         primary={project.image}
                         priority={index === 0}
-                        secondary={media.secondary}
-                        secondaryAlt={media.secondaryAlt}
                         sizes={index === 0
                           ? "(max-width: 760px) 100vw, 72vw"
                           : "(max-width: 760px) 100vw, 46vw"}
@@ -185,8 +166,7 @@ export default function HomePage() {
                       </div>
                     </div>
                   </article>
-                );
-              })}
+              ))}
             </div>
           </div>
         </section>
