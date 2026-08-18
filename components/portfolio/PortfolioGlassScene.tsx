@@ -232,18 +232,26 @@ function GlassWord({
     const motion = interaction.current;
     const inHero = motion.zone === "hero";
     const progress = clamp(motion.progress);
-    const targetX = compact ? 0 : (inHero ? 1.45 : 0.3);
+    const targetX = compact ? 0 : (inHero ? 1.68 : 0.3);
     const targetY = compact
       ? (inHero ? 1.05 + progress * 0.46 : -1.55)
       : (inHero ? 0.96 + progress * 0.92 : -1.15);
-    const targetScale = compact
+    const targetScaleX = compact
       ? (inHero ? 0.38 - progress * 0.025 : 0.46)
-      : (inHero ? 0.76 - progress * 0.06 : 1.14);
+      : (inHero ? 0.62 - progress * 0.045 : 1.14);
+    const targetScaleY = compact
+      ? (inHero ? 0.38 - progress * 0.025 : 0.46)
+      : (inHero ? 0.84 - progress * 0.06 : 1.14);
+    const targetScaleZ = compact
+      ? (inHero ? 0.38 - progress * 0.025 : 0.46)
+      : (inHero ? 0.76 - progress * 0.05 : 1.14);
     const targetOpacity = inHero ? 1 - progress * 0.7 : 0.44 + progress * 0.28;
 
     group.current.position.x = THREE.MathUtils.damp(group.current.position.x, targetX, 8.5, delta);
     group.current.position.y = THREE.MathUtils.damp(group.current.position.y, targetY, 8.5, delta);
-    group.current.scale.setScalar(THREE.MathUtils.damp(group.current.scale.x, targetScale, 8.5, delta));
+    group.current.scale.x = THREE.MathUtils.damp(group.current.scale.x, targetScaleX, 8.5, delta);
+    group.current.scale.y = THREE.MathUtils.damp(group.current.scale.y, targetScaleY, 8.5, delta);
+    group.current.scale.z = THREE.MathUtils.damp(group.current.scale.z, targetScaleZ, 8.5, delta);
     group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, -0.08, 8.5, delta);
     group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, inHero ? -0.11 : 0.08, 8.5, delta);
 
@@ -283,7 +291,9 @@ function GlassWord({
       Math.abs(contactValue.current - contactTarget.current),
       Math.abs(group.current.position.x - targetX),
       Math.abs(group.current.position.y - targetY),
-      Math.abs(group.current.scale.x - targetScale),
+      Math.abs(group.current.scale.x - targetScaleX),
+      Math.abs(group.current.scale.y - targetScaleY),
+      Math.abs(group.current.scale.z - targetScaleZ),
     );
     if (unsettled > 0.001) invalidate();
   }, 1);
@@ -291,10 +301,10 @@ function GlassWord({
 
   return (
     <group
-      position={[compact ? 0 : 1.45, compact ? 1.05 : 0.96, 0]}
+      position={[compact ? 0 : 1.68, compact ? 1.05 : 0.96, 0]}
       ref={group}
       rotation={[-0.08, -0.11, 0]}
-      scale={compact ? 0.38 : 0.76}
+      scale={compact ? 0.38 : [0.62, 0.84, 0.76]}
     >
       <mesh geometry={geometry} material={material} ref={mesh} />
     </group>

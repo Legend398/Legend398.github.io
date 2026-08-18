@@ -69,12 +69,12 @@
   color: transparent;
   filter: drop-shadow(0 24px 28px rgba(21, 73, 59, 0.15));
   font-family: var(--font-sans), sans-serif;
-  font-size: clamp(7rem, 19vw, 19rem);
+  font-size: clamp(7rem, 14vw, 14rem);
   font-weight: 800;
   letter-spacing: -0.095em;
   line-height: 0.72;
   opacity: 0.92;
-  transform: translate(4%, -3%);
+  transform: translate(1%, -10%);
   white-space: nowrap;
 }
 
@@ -122,4 +122,3 @@
     transition: none;
   }
 }
-
