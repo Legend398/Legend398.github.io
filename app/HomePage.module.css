@@ -639,11 +639,13 @@
 }
 
 .mediaLink {
-  background: #dce0d8;
-  border: 1px solid rgba(16, 23, 19, 0.18);
+  background: #07150f;
+  border: 1px solid rgba(16, 23, 19, 0.26);
+  box-shadow: 0 24px 62px -46px rgba(7, 21, 15, 0.7);
   display: block;
   overflow: hidden;
   position: relative;
+  transition: border-color 280ms ease, box-shadow 360ms ease;
 }
 
 .projectLead .mediaLink {
@@ -654,19 +656,14 @@
   aspect-ratio: 4 / 3;
 }
 
-.mediaLink::after {
-  border: 1px solid rgba(244, 240, 231, 0.36);
-  content: "";
-  inset: 0.55rem;
-  pointer-events: none;
-  position: absolute;
-  transition: inset 180ms ease, border-color 180ms ease;
-  z-index: 4;
+.mediaLink:hover {
+  border-color: rgba(16, 23, 19, 0.52);
+  box-shadow: 0 30px 72px -42px rgba(7, 21, 15, 0.9);
 }
 
-.mediaLink:hover::after {
-  border-color: rgba(244, 240, 231, 0.74);
-  inset: 0.75rem;
+.mediaLink:focus-visible {
+  outline: 3px solid var(--home-vermilion);
+  outline-offset: 4px;
 }
 
 .projectNumber {
