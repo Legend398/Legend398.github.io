@@ -20,8 +20,8 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --page: min(100% - 48px, 1440px);
   --content: min(100% - 48px, 1180px);
-  --header-height: 72px;
-  color-scheme: light;
+  --header-height: 76px;
+  color-scheme: dark light;
 }
 
 * {

@@ -18,6 +18,236 @@
   box-sizing: border-box;
 }
 
+.studioHero,
+.kineticHero {
+  background: radial-gradient(ellipse at 52% 45%, #13217d 0%, #09145d 48%, #050a3c 100%);
+  color: #f7f8f4;
+  height: max(720px, 100svh);
+  isolation: isolate;
+  min-height: 720px;
+  overflow: hidden;
+  position: relative;
+}
+
+.kineticHero::before {
+  background-image:
+    radial-gradient(circle at 15% 28%, rgba(255, 255, 255, 0.4) 0 0.45px, transparent 0.7px),
+    radial-gradient(circle at 78% 62%, rgba(255, 255, 255, 0.3) 0 0.5px, transparent 0.75px);
+  background-size: 9px 9px, 13px 13px;
+  content: "";
+  inset: 0;
+  mix-blend-mode: soft-light;
+  opacity: 0.18;
+  pointer-events: none;
+  position: absolute;
+  z-index: 5;
+}
+
+.kineticGrid {
+  background-image:
+    linear-gradient(90deg, transparent calc(33.333% - 0.5px), rgba(255, 255, 255, 0.1) calc(33.333% - 0.5px) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px) calc(66.666% - 0.5px), rgba(255, 255, 255, 0.1) calc(66.666% - 0.5px) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px)),
+    linear-gradient(transparent calc(40% - 0.5px), rgba(255, 255, 255, 0.1) calc(40% - 0.5px) calc(40% + 0.5px), transparent calc(40% + 0.5px) calc(72% - 0.5px), rgba(255, 255, 255, 0.1) calc(72% - 0.5px) calc(72% + 0.5px), transparent calc(72% + 0.5px));
+  border-inline: 1px solid rgba(255, 255, 255, 0.1);
+  inset: 0;
+  margin-inline: clamp(18px, 3.3vw, 68px);
+  opacity: 0.34;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.studioHeroMeta {
+  display: grid;
+  font: 560 clamp(12px, 1vw, 16px) / 1.45 var(--font-mono), monospace;
+  gap: clamp(28px, 7vw, 130px);
+  grid-template-columns: 1fr 1fr 1.35fr;
+  letter-spacing: -0.015em;
+  padding: 92px clamp(22px, 4vw, 56px) 0;
+  pointer-events: none;
+  position: relative;
+  width: 100%;
+  z-index: 22;
+}
+
+.studioHeroMeta p {
+  max-width: 390px;
+}
+
+.studioHeroMeta p:nth-child(2) {
+  justify-self: center;
+}
+
+.studioHeroMeta p:nth-child(3) {
+  justify-self: end;
+}
+
+.studioHeroMeta strong {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 1.65em;
+  line-height: 1;
+}
+
+.studioHeroClaim {
+  bottom: clamp(40px, 6vh, 68px);
+  left: clamp(22px, 4vw, 56px);
+  position: absolute;
+  width: min(800px, 68vw);
+  z-index: 24;
+}
+
+.studioHeroClaim > p,
+.studioHeroClaim > a,
+.studioHeroCoordinates {
+  font: 650 9px / 1.45 var(--font-mono), monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.studioHeroClaim > p {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.studioHeroClaim h1 {
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(58px, 6.7vw, 108px);
+  font-weight: 820;
+  letter-spacing: -0.065em;
+  line-height: 0.86;
+  margin-top: 16px;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.studioHeroClaim > a {
+  align-items: center;
+  background: white;
+  border: 1px solid white;
+  color: #07105c;
+  display: inline-flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  min-height: 44px;
+  padding: 10px 12px;
+  transition: background 180ms ease, color 180ms ease;
+  width: 190px;
+}
+
+.studioHeroClaim > a:hover {
+  background: transparent;
+  color: white;
+}
+
+.studioHeroCoordinates {
+  bottom: clamp(40px, 6vh, 68px);
+  color: rgba(255, 255, 255, 0.58);
+  position: absolute;
+  right: clamp(22px, 4vw, 56px);
+  z-index: 24;
+}
+
+.studioHero :global(.glassScene) {
+  --pointer-x: 0;
+  --pointer-y: 0;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 8;
+}
+
+.studioHero :global(.glassScene canvas) {
+  display: block;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 100%;
+}
+
+.studioHero :global(.glassScene[data-renderer="webgl"].isReady canvas) {
+  opacity: 1;
+}
+
+.studioHero :global(.glassScene[data-renderer="fallback"] canvas) {
+  display: none;
+}
+
+.studioHero :global(.glassFallback) {
+  left: 56%;
+  position: absolute;
+  text-align: center;
+  top: 50%;
+  transform:
+    translate(-50%, -50%)
+    perspective(800px)
+    rotateX(calc(var(--pointer-y) * -7deg))
+    rotateY(calc(var(--pointer-x) * 10deg))
+    rotate(-4deg);
+  transition: opacity 500ms ease;
+  width: min(970px, 72vw);
+}
+
+.studioHero :global(.glassFallback svg) {
+  display: block;
+  filter:
+    drop-shadow(0 18px 22px rgba(1, 3, 34, 0.34))
+    drop-shadow(-3px -3px 8px rgba(190, 207, 255, 0.14));
+  overflow: visible;
+  width: 100%;
+}
+
+.studioHero :global(.glassFallbackDepth) {
+  fill: rgba(3, 8, 54, 0.62);
+  transform: translate(12px, 20px);
+}
+
+.studioHero :global(.glassFallbackFace) {
+  fill: url("#fallback-glass-face");
+  paint-order: stroke fill;
+  stroke: rgba(238, 245, 255, 0.76);
+  stroke-width: 3.5px;
+}
+
+.studioHero :global(.glassFallbackSheen) {
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  opacity: 0.48;
+}
+
+.studioHero :global(.glassScene[data-renderer="webgl"] .glassFallback) {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.studioHero :global(.sceneLoader) {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  height: 5px;
+  left: 50%;
+  overflow: hidden;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 350ms ease;
+  width: 132px;
+  z-index: 30;
+}
+
+.studioHero :global(.sceneLoader i) {
+  animation: studioKineticLoad 950ms cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+  background: white;
+  display: block;
+  height: 100%;
+  width: 46%;
+}
+
+.studioHero :global(.glassScene.isReady .sceneLoader) {
+  display: none;
+}
+
+@keyframes studioKineticLoad {
+  from { transform: translateX(-18%); }
+  to { transform: translateX(135%); }
+}
+
 .sectionFrame {
   margin: 0 auto;
   max-width: 1500px;
@@ -29,7 +259,7 @@
 .work,
 .experience,
 .contact {
-  scroll-margin-top: 72px;
+  scroll-margin-top: 76px;
 }
 
 .hero {
@@ -730,6 +960,57 @@
 }
 
 @media (max-width: 760px) {
+  .studioHero,
+  .kineticHero {
+    height: max(680px, 100svh);
+    min-height: 680px;
+  }
+
+  .studioHeroMeta {
+    font-size: 10px;
+    gap: 18px;
+    grid-template-columns: 1fr 1.3fr;
+    padding: 76px 18px 0;
+  }
+
+  .studioHeroMeta p:nth-child(2) {
+    display: none;
+  }
+
+  .studioHeroMeta p:nth-child(3) {
+    justify-self: end;
+    max-width: 190px;
+  }
+
+  .studioHeroClaim {
+    bottom: 58px;
+    left: 18px;
+    width: calc(100% - 36px);
+  }
+
+  .studioHeroClaim h1 {
+    font-size: clamp(46px, 13vw, 70px);
+    line-height: 0.9;
+  }
+
+  .studioHeroClaim > a {
+    margin-top: 18px;
+  }
+
+  .studioHeroCoordinates {
+    display: none;
+  }
+
+  .studioHero :global(.glassFallback) {
+    top: 42%;
+    width: 96vw;
+  }
+
+  .studioHero :global(.glassFallback svg) {
+    margin-left: 0;
+    width: 100%;
+  }
+
   .sectionFrame {
     padding-inline: 1rem;
   }
@@ -999,6 +1280,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .studioHero :global(.sceneLoader) {
+    display: none;
+  }
+
+  .studioHero :global(.glassFallback) {
+    transform: translate(-50%, -50%) rotate(-4deg);
+  }
+
   .home *,
   .home *::before,
   .home *::after {

@@ -1,8 +1,7 @@
 import Link from "next/link";
-import LiquidEther from "@/components/effects/LiquidEther";
+import { GlassWordScene } from "@/components/GlassWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
-import { PortfolioExperience } from "@/components/portfolio/PortfolioExperience";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
 import { capabilities, profile, projects, type ProjectVisualKind } from "@/lib/portfolio";
 import styles from "./HomePage.module.css";
@@ -54,69 +53,31 @@ const projectMedia: Record<ProjectVisualKind, { secondary: string; secondaryAlt:
   },
 };
 
-const HERO_ETHER_COLORS = ["#07130f", "#2c6656", "#9fcbbd"];
-
 export default function HomePage() {
   return (
     <HomeRuntime>
       <main className={styles.home} id="main-content">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <PortfolioExperience />
+        <section className={`${styles.studioHero} ${styles.kineticHero}`} aria-labelledby="hero-title" data-v8-hero>
+          <GlassWordScene />
+          <div className={styles.kineticGrid} aria-hidden="true" />
 
-        <section className={styles.hero} data-glass-zone="hero" aria-labelledby="hero-title">
-          <div className={styles.heroEtherFrame}>
-            <LiquidEther
-              autoIntensity={1.3}
-              autoRampDuration={0.8}
-              autoResumeDelay={600}
-              autoSpeed={0.26}
-              BFECC={false}
-              className={styles.heroEtherCanvas}
-              colors={HERO_ETHER_COLORS}
-              cursorSize={108}
-              dt={0.012}
-              isViscous
-              iterationsPoisson={18}
-              iterationsViscous={18}
-              mouseForce={14}
-              resolution={0.38}
-              takeoverDuration={0.35}
-              viscous={27}
-            />
+          <div className={styles.studioHeroMeta}>
+            <p><strong>Software &amp;</strong><br />AI Engineering</p>
+            <p>Thinking in systems.<br />Shipping with care.</p>
+            <p>
+              I&apos;m Himanshu Kumar. I build agentic developer tools, dependable products,
+              and applied-ML interfaces.
+            </p>
           </div>
-          <div className={`${styles.sectionFrame} ${styles.heroInner}`}>
-            <p className={styles.role} data-hero-role>{profile.role}</p>
 
-            <div className={styles.heroTitleBlock} data-hero-title-block>
-              <p className={styles.edition}>Portfolio / 2026</p>
-              <h1 id="hero-title" aria-label="Software, AI, and data—built to be used.">
-                <span aria-hidden="true">Software, AI,</span>
-                <span aria-hidden="true">and data—built</span>
-                <span aria-hidden="true">to be used.</span>
-              </h1>
-            </div>
-
-            <div className={styles.mobileGlassSlot} data-mobile-glass-slot aria-hidden="true" />
-
-            <div className={styles.heroBottom} data-hero-bottom>
-              <p className={styles.heroIntro}>
-                I design agentic AI tools, reliable software products, and clear machine-learning applications.
-              </p>
-              <div className={styles.heroActions}>
-                <a aria-label="View selected work" className={styles.primaryAction} data-primary-action href="#work">
-                  <span className={styles.desktopActionText}>View selected work</span>
-                  <span aria-hidden="true" className={styles.mobileActionText}>Selected work</span>
-                  <span aria-hidden="true">↓</span>
-                </a>
-                <a aria-label="Download résumé" className={styles.secondaryAction} data-primary-action href={profile.resume} download>
-                  <span className={styles.desktopActionText}>Download résumé</span>
-                  <span aria-hidden="true" className={styles.mobileActionText}>Résumé</span>
-                  <span aria-hidden="true">↓</span>
-                </a>
-              </div>
-              <p className={styles.interactionNote}>Move across BUILD to bend the light</p>
-            </div>
+          <div className={styles.studioHeroClaim}>
+            <p>Software engineer · India · 2026</p>
+            <h1 id="hero-title">I build software<br />with craft &amp; proof.</h1>
+            <a data-primary-action href="#work">Selected work <span aria-hidden="true">↓</span></a>
           </div>
+
+          <span className={styles.studioHeroCoordinates} aria-hidden="true">Systems / software / AI</span>
         </section>
 
         <section className={styles.about} id="about" aria-labelledby="about-title">

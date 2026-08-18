@@ -24,7 +24,7 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
     <ReactLenis
       root
       options={{
-        anchors: { offset: -72 },
+        anchors: { offset: -76 },
         autoRaf: true,
         duration: 1.05,
         smoothWheel: true,
