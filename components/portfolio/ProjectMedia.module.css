@@ -1,6 +1,4 @@
 .root {
-  --media-x: 50%;
-  --media-y: 50%;
   --media-shift: 0px;
   --media-tilt: 0deg;
   background: #d9ddd5;
@@ -25,52 +23,25 @@
 }
 
 .primary,
-.secondary {
+.secondaryPreload {
   height: 100%;
   inset: 0;
   position: absolute;
   width: 100%;
 }
 
-.primary::after {
-  background: linear-gradient(180deg, transparent 58%, rgba(7, 20, 15, 0.16));
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
-.secondary {
-  filter: saturate(0.92) contrast(1.03);
-  mask-image: radial-gradient(
-    circle 170px at var(--media-x) var(--media-y),
-    #000 0,
-    rgba(0, 0, 0, 0.96) 42%,
-    rgba(0, 0, 0, 0.3) 66%,
-    transparent 78%
-  );
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-
-.root[data-pointer-inside="true"] .secondary {
-  opacity: 1;
-}
-
-.dotField {
-  background-image: radial-gradient(circle, rgba(244, 240, 231, 0.72) 0 1px, transparent 1.5px);
-  background-size: 8px 8px;
-  inset: 0;
-  mask-image: radial-gradient(circle 190px at var(--media-x) var(--media-y), #000, transparent 72%);
+.secondaryPreload {
   opacity: 0;
   pointer-events: none;
-  position: absolute;
-  transition: opacity 180ms ease;
-  z-index: 3;
+  visibility: hidden;
 }
 
-.root[data-pointer-inside="true"] .dotField {
-  opacity: 0.5;
+.imageDescription {
+  display: none;
+}
+
+.halftone {
+  inset: 0;
 }
 
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {
@@ -79,9 +50,8 @@
     transition: none;
   }
 
-  .secondary,
-  .dotField {
+  .secondaryPreload,
+  .halftone {
     display: none;
   }
 }
-

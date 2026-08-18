@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import HalftoneReveal from "@/components/effects/HalftoneReveal";
 import styles from "./ProjectMedia.module.css";
 
 type ProjectMediaProps = {
@@ -56,14 +57,6 @@ export function ProjectMedia({
     };
   }, []);
 
-  const updatePointer = (event: PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - bounds.left) / bounds.width) * 100;
-    const y = ((event.clientY - bounds.top) / bounds.height) * 100;
-    event.currentTarget.style.setProperty("--media-x", `${x}%`);
-    event.currentTarget.style.setProperty("--media-y", `${y}%`);
-  };
-
   return (
     <div
       className={styles.root}
@@ -71,10 +64,8 @@ export function ProjectMedia({
       data-project-media
       onPointerEnter={(event) => {
         if (event.pointerType !== "touch") setPointerInside(true);
-        updatePointer(event);
       }}
       onPointerLeave={() => setPointerInside(false)}
-      onPointerMove={updatePointer}
       ref={root}
     >
       <div className={styles.motionPlane}>
@@ -89,9 +80,9 @@ export function ProjectMedia({
             src={primary}
           />
         </div>
-        <div className={styles.secondary}>
+        <div className={styles.secondaryPreload} aria-hidden="true">
           <Image
-            alt={secondaryAlt}
+            alt=""
             data-project-secondary
             fill
             quality={88}
@@ -99,7 +90,21 @@ export function ProjectMedia({
             src={secondary}
           />
         </div>
-        <span className={styles.dotField} aria-hidden="true" />
+        <HalftoneReveal
+          className={styles.halftone}
+          printSrc={primary}
+          revealSrc={secondary}
+          revealMix={1}
+          inkColor="#0b221b"
+          paperColor="#eee9dd"
+          dotDensity={74}
+          dotSize={0.94}
+          angle={45}
+          revealRadius={0.26}
+          edge={0.76}
+          follow={0.18}
+        />
+        <span className={styles.imageDescription} data-secondary-alt={secondaryAlt} aria-hidden="true" />
       </div>
     </div>
   );

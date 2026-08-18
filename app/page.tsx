@@ -40,7 +40,7 @@ const recognition = [
 
 const projectMedia: Record<ProjectVisualKind, { secondary: string; secondaryAlt: string }> = {
   loop: {
-    secondary: "/work/loop-engineering-system.svg",
+    secondary: "/work/loop-engineering-system.png",
     secondaryAlt: "Loop Engineering architecture showing the task, implementation, verification, and checker stages.",
   },
   stocklane: {

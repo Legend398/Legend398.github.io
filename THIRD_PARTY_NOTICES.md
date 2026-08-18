@@ -1,12 +1,13 @@
 # Third-party notices
 
-## React Bits: Liquid Ether and Ripple Distortion
+## React Bits: Liquid Ether, Ripple Distortion, and Halftone Reveal
 
-`components/effects/LiquidEther` and `components/effects/RippleDistortion` are adapted from the official React Bits TypeScript/CSS component sources at commit `4e0e030193b563be6be33d928f77d0d01cefe237`. The portfolio adds local styling, accessibility fallbacks, lifecycle guards, and project-specific settings.
+`components/effects/LiquidEther`, `components/effects/RippleDistortion`, and `components/effects/HalftoneReveal` are adapted from official React Bits component sources. The portfolio adds local styling, accessibility fallbacks, lifecycle guards, and project-specific settings.
 
 - Project: <https://www.reactbits.dev/>
 - Liquid Ether: <https://www.reactbits.dev/backgrounds/liquid-ether>
 - Ripple Distortion: <https://www.reactbits.dev/animations/ripple-distortion>
+- Halftone Reveal: <https://www.reactbits.dev/animations/halftone-reveal>
 - Source: <https://github.com/DavidHDev/react-bits>
 - Copyright: React Bits contributors
 - License: MIT License with Commons Clause
@@ -15,7 +16,7 @@ The license permits use and modification in this portfolio while restricting sal
 
 ## OGL
 
-Ripple Distortion uses OGL 1.0.11.
+Ripple Distortion and Halftone Reveal use OGL 1.0.11.
 
 - Source: <https://github.com/oframe/ogl>
 - License: Unlicense

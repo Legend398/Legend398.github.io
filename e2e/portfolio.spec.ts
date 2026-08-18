@@ -17,6 +17,26 @@ async function expectLoadedImages(page: Page) {
   }
 }
 
+async function expectDecodedImage(image: Locator) {
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((element) => {
+    const candidate = element as HTMLImageElement;
+    return candidate.complete && candidate.naturalWidth > 0 && candidate.naturalHeight > 0;
+  })).toBe(true);
+}
+
+async function expectLayoutShiftWithin(
+  before: { x: number; y: number } | null,
+  after: { x: number; y: number } | null,
+  tolerance: number,
+) {
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  if (!before || !after) return;
+  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(tolerance);
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     pageWidth: document.documentElement.scrollWidth,
@@ -309,22 +329,118 @@ test("keyboard navigation exposes the skip link and primary navigation", async (
   expect(linksAreLargeEnough).toBe(true);
 });
 
-test("project hover changes only media paint, never project layout", async ({ page }) => {
+test("desktop project media mount exactly three halftone reveal roots", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
+
+  const media = page.locator("[data-project-media]");
+  await media.first().scrollIntoViewIfNeeded();
+  await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
+  await expect(media.first().locator('[data-halftone-reveal][data-halftone-mode="webgl"]')).toHaveCount(1);
+  await expect(media.first().locator("[data-halftone-reveal] canvas")).toBeVisible();
+});
+
+test("hovering project media reveals the image without shifting its title or link", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
   const project = page.locator("[data-project-card]").first();
   await project.scrollIntoViewIfNeeded();
   const title = project.getByRole("heading");
-  const before = await title.boundingBox();
-  await project.locator("[data-project-media]").hover();
-  await page.waitForTimeout(300);
-  const after = await title.boundingBox();
-  expect(before).not.toBeNull();
-  expect(after).not.toBeNull();
-  expect(Math.abs(after!.x - before!.x)).toBeLessThanOrEqual(2);
-  expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(2);
-  await expect(project.locator("[data-project-media]")).toHaveAttribute("data-pointer-inside", "true");
+  const link = project.locator("[data-project-action]").last();
+  const reveal = project.locator("[data-halftone-reveal]");
+  const media = project.locator("[data-project-media]");
+  await expect(reveal).toHaveAttribute("data-halftone-state", "idle");
+  await expect(reveal).toHaveAttribute("data-halftone-print-src", "/work/loop-engineering-showcase.jpeg");
+  await expect(reveal).toHaveAttribute("data-halftone-reveal-src", "/work/loop-engineering-system.png");
+  const frameBefore = Number(await reveal.getAttribute("data-halftone-frame"));
+  const titleBefore = await title.boundingBox();
+  const linkBefore = await link.boundingBox();
+
+  await media.hover();
+  await expect(media).toHaveAttribute("data-pointer-inside", "true");
+  await expect(reveal).toHaveAttribute("data-halftone-state", /revealing|settling/);
+  await expect.poll(async () => Number(await reveal.getAttribute("data-halftone-frame"))).toBeGreaterThan(frameBefore);
+  await expectLayoutShiftWithin(titleBefore, await title.boundingBox(), 2);
+  await expectLayoutShiftWithin(linkBefore, await link.boundingBox(), 2);
+});
+
+test("project halftone rendering settles after the pointer leaves", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const media = page.locator("[data-project-media]").first();
+  await media.scrollIntoViewIfNeeded();
+  const reveal = media.locator("[data-halftone-reveal]");
+  await media.hover();
+  await expect(reveal).toHaveAttribute("data-halftone-state", /revealing|settling/);
+  await page.mouse.move(4, 4);
+  await expect(media).toHaveAttribute("data-pointer-inside", "false");
+  await expect(reveal).toHaveAttribute("data-halftone-state", "idle", { timeout: 3_000 });
+});
+
+test("reduced motion keeps decoded project images and skips halftone WebGL canvases", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const media = page.locator("[data-project-media]");
+  await media.first().scrollIntoViewIfNeeded();
+  await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
+  await expect(page.locator('[data-halftone-reveal][data-halftone-mode="fallback"]')).toHaveCount(3);
+  await expect(page.locator("[data-halftone-reveal] canvas")).toHaveCount(0);
+  for (let index = 0; index < 3; index += 1) {
+    await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
+  }
+});
+
+test("mobile keeps decoded project images and skips halftone WebGL canvases", async ({ browser }) => {
+  const baseURL = test.info().project.use.baseURL;
+  if (!baseURL) throw new Error("Playwright baseURL is required for the mobile halftone check.");
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/");
+
+    const media = page.locator("[data-project-media]");
+    await media.first().scrollIntoViewIfNeeded();
+    await expect(page.locator("[data-halftone-reveal]")).toHaveCount(3);
+    await expect(page.locator('[data-halftone-reveal][data-halftone-mode="fallback"]')).toHaveCount(3);
+    await expect(page.locator("[data-halftone-reveal] canvas")).toHaveCount(0);
+    for (let index = 0; index < 3; index += 1) {
+      await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test("project halftone rendering stops after its media leaves the viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const media = page.locator("[data-project-media]").first();
+  await media.scrollIntoViewIfNeeded();
+  const reveal = media.locator("[data-halftone-reveal]");
+  await expect(reveal).toHaveAttribute("data-halftone-mode", "webgl");
+  await media.hover();
+  await page.mouse.move(4, 4);
+  await expect(reveal).toHaveAttribute("data-halftone-state", "idle", { timeout: 3_000 });
+  await page.locator("[data-v8-hero]").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
+  const frameWhenOffscreen = Number(await reveal.getAttribute("data-halftone-frame"));
+  await page.waitForTimeout(350);
+  await expect(reveal).toHaveAttribute("data-halftone-frame", String(frameWhenOffscreen));
 });
 
 for (const slug of projectSlugs) {
