@@ -232,13 +232,13 @@ function GlassWord({
     const motion = interaction.current;
     const inHero = motion.zone === "hero";
     const progress = clamp(motion.progress);
-    const targetX = compact ? 0 : (inHero ? 0.9 : 0.3);
+    const targetX = compact ? 0 : (inHero ? 1.45 : 0.3);
     const targetY = compact
       ? (inHero ? 1.05 + progress * 0.46 : -1.55)
       : (inHero ? 0.52 + progress * 0.92 : -1.15);
     const targetScale = compact
       ? (inHero ? 0.38 - progress * 0.025 : 0.46)
-      : (inHero ? 0.86 - progress * 0.07 : 1.14);
+      : (inHero ? 0.76 - progress * 0.06 : 1.14);
     const targetOpacity = inHero ? 1 - progress * 0.7 : 0.44 + progress * 0.28;
 
     group.current.position.x = THREE.MathUtils.damp(group.current.position.x, targetX, 8.5, delta);
@@ -291,10 +291,10 @@ function GlassWord({
 
   return (
     <group
-      position={[compact ? 0 : 0.9, compact ? 1.05 : 0.52, 0]}
+      position={[compact ? 0 : 1.45, compact ? 1.05 : 0.52, 0]}
       ref={group}
       rotation={[-0.08, -0.11, 0]}
-      scale={compact ? 0.38 : 0.86}
+      scale={compact ? 0.38 : 0.76}
     >
       <mesh geometry={geometry} material={material} ref={mesh} />
     </group>
