@@ -7,6 +7,7 @@ const requiredFiles = [
   "out/404.html",
   "out/robots.txt",
   "out/sitemap.xml",
+  "out/googlecc418591f1204068.html",
   "out/Himanshu-Kumar-Resume-2026.pdf",
   "out/work/loop-engineering/index.html",
   "out/work/stocklane/index.html",
@@ -24,6 +25,11 @@ if (missingFiles.length > 0) {
 const homeHtml = readFileSync(resolve(root, "out/index.html"), "utf8");
 const sitemap = readFileSync(resolve(root, "out/sitemap.xml"), "utf8");
 const robots = readFileSync(resolve(root, "out/robots.txt"), "utf8");
+const googleVerification = readFileSync(resolve(root, "out/googlecc418591f1204068.html"), "utf8").trim();
+
+if (googleVerification !== "google-site-verification: googlecc418591f1204068.html") {
+  throw new Error("Google Search Console verification file contains the wrong token.");
+}
 
 for (const [label, content] of [["homepage", homeHtml], ["sitemap", sitemap], ["robots", robots]]) {
   if (content.includes("http://localhost:3000")) {
