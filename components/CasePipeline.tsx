@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Project } from "@/lib/portfolio";
 import styles from "./CasePipeline.module.css";
 
@@ -11,178 +12,56 @@ type CasePipelineProps = {
 
 const variants: Record<
   Project["visual"],
-  { id: PipelineVariant; label: string; noteLabel: string }
+  { id: PipelineVariant; src: string; alt: string }
 > = {
   loop: {
     id: "loop-control",
-    label: "Closed-loop verification",
-    noteLabel: "Verification return",
+    src: "/work/loop-pipeline.png",
+    alt: "Loop Engineering closed-loop workflow showing task clarification, planning, implementation, fresh checks, independent verification, delivery, and the verify-again return path.",
   },
   stocklane: {
     id: "atomic-transaction",
-    label: "Atomic reservation",
-    noteLabel: "Rollback outcome",
+    src: "/work/stocklane-pipeline.png",
+    alt: "Stocklane atomic inventory reservation workflow showing order receipt, line validation, one transaction, reserved inventory, fulfil or cancellation, and rollback when any line fails.",
   },
   credit: {
     id: "model-inference",
-    label: "Validated inference",
-    noteLabel: "Invalid input path",
+    src: "/work/credit-risk-pipeline.png",
+    alt: "Credit Risk Explorer pipeline showing eight inputs, validation, preprocessing, the XGBoost model, and an explained educational risk assessment.",
   },
 };
 
-function StocklaneMotif({ index }: { index: number }) {
-  if (index === 0) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.orderSheet}`} aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-    );
-  }
-
-  if (index === 1) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.validationLedger}`} aria-hidden="true">
-        <span><i /> <b /></span>
-        <span><i /> <b /></span>
-        <span><i /> <b /></span>
-      </span>
-    );
-  }
-
-  if (index === 2) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.transactionChamber}`} aria-hidden="true">
-        <small>ONE TRANSACTION</small>
-        <span>BEGIN</span>
-        <i>ALL LINES</i>
-        <b>COMMIT</b>
-      </span>
-    );
-  }
-
-  if (index === 3) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.inventoryLedger}`} aria-hidden="true">
-        <small>ON HAND</small><small>RESERVED</small><small>AVAILABLE</small>
-        <i /><i /><i />
-        <i /><i /><i />
-      </span>
-    );
-  }
-
-  return (
-    <span className={`${styles.stageMotif} ${styles.orderActions}`} aria-hidden="true">
-      <span>FULFIL</span>
-      <span>CANCEL</span>
-    </span>
-  );
-}
-
-function CreditMotif({ index }: { index: number }) {
-  if (index === 0) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.inputStack}`} aria-hidden="true">
-        {Array.from({ length: 8 }, (_, item) => <i key={item} />)}
-      </span>
-    );
-  }
-
-  if (index === 1) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.validationGate}`} aria-hidden="true">
-        <i>VALID</i>
-        <b>×</b>
-      </span>
-    );
-  }
-
-  if (index === 2) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.preprocessingMatrix}`} aria-hidden="true">
-        {Array.from({ length: 12 }, (_, item) => <i key={item} />)}
-      </span>
-    );
-  }
-
-  if (index === 3) {
-    return (
-      <span className={`${styles.stageMotif} ${styles.modelCore}`} aria-hidden="true">
-        <i /><i /><i /><i /><i /><i /><i />
-        <b>XGBOOST</b>
-      </span>
-    );
-  }
-
-  return (
-    <span className={`${styles.stageMotif} ${styles.resultSheet}`} aria-hidden="true">
-      <i />
-      <span>Relative score</span>
-      <span>Risk band</span>
-      <span>Review flag</span>
-      <span>Educational estimate</span>
-    </span>
-  );
-}
-
-function StageMotif({ visual, index }: { visual: Project["visual"]; index: number }) {
-  if (visual === "stocklane") return <StocklaneMotif index={index} />;
-  if (visual === "credit") return <CreditMotif index={index} />;
-  return null;
-}
-
-function BranchNote({
-  label,
-  stage,
-  visual,
-  inline = false,
-}: {
-  label: string;
-  stage: Project["pipeline"][number];
-  visual: Project["visual"];
-  inline?: boolean;
-}) {
-  if (!stage.branch) return null;
-
-  return (
-    <aside
-      className={`${styles.returnNote} ${inline ? styles.inlineReturnNote : ""}`}
-      role="note"
-      aria-label={label}
-    >
-      <span>{label}</span>
-      <p><strong>{stage.title}:</strong> {stage.branch}</p>
-      {visual === "loop" ? <small aria-hidden="true">↖ Return to 04</small> : null}
-      {visual === "stocklane" ? <small aria-hidden="true">Inventory unchanged</small> : null}
-    </aside>
-  );
-}
-
 export function CasePipeline({ projectTitle, visual, stages }: CasePipelineProps) {
   const variant = variants[visual];
-  const returnPaths = stages.filter((stage) => stage.branch);
 
   return (
     <figure
-      className={`${styles.figure} ${styles[visual]}`}
+      className={styles.figure}
       data-case-pipeline
       data-case-pipeline-variant={variant.id}
     >
       <figcaption className="srOnly">{projectTitle} workflow</figcaption>
 
-      <div className={styles.diagramLabel} aria-hidden="true">
-        <span>{variant.label}</span>
-        <small>{String(stages.length).padStart(2, "0")} stages</small>
-      </div>
+      <a
+        className={styles.sheet}
+        href={variant.src}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Open the full-size ${projectTitle} workflow diagram`}
+      >
+        <Image
+          className={styles.image}
+          data-case-pipeline-image
+          src={variant.src}
+          alt={variant.alt}
+          width={1536}
+          height={1024}
+          sizes="(max-width: 980px) calc(100vw - 28px), 950px"
+        />
+        <span className={styles.openLabel} aria-hidden="true">Open full size ↗</span>
+      </a>
 
-      {visual === "loop" ? (
-        <div className={styles.loopTrack} aria-hidden="true">
-          <i /><i /><i /><i /><i /><i />
-        </div>
-      ) : null}
-
-      <ol className={styles.pipeline} aria-label={`${projectTitle} workflow`}>
+      <ol className="srOnly" aria-label={`${projectTitle} workflow`}>
         {stages.map((stage, index) => (
           <li
             key={stage.title}
@@ -190,28 +69,12 @@ export function CasePipeline({ projectTitle, visual, stages }: CasePipelineProps
             data-stage-index={String(index + 1).padStart(2, "0")}
             data-has-branch={stage.branch ? "true" : "false"}
           >
-            <StageMotif visual={visual} index={index} />
-            <div className={styles.stageCopy}>
-              <span className={styles.number} aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <h3 data-case-pipeline-title>{stage.title}</h3>
-                <p>{stage.detail}</p>
-              </div>
-            </div>
-            {visual === "stocklane" && stage.branch ? (
-              <BranchNote label={variant.noteLabel} stage={stage} visual={visual} inline />
-            ) : null}
+            <h3 data-case-pipeline-title>{stage.title}</h3>
+            <p>{stage.detail}</p>
+            {stage.branch ? <p>{stage.branch}</p> : null}
           </li>
         ))}
       </ol>
-
-      {visual !== "stocklane"
-        ? returnPaths.map((stage) => (
-            <BranchNote key={stage.title} label={variant.noteLabel} stage={stage} visual={visual} />
-          ))
-        : null}
     </figure>
   );
 }
