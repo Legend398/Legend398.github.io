@@ -27,6 +27,12 @@ const projectPipelines = {
   ],
 } as const;
 
+const projectPipelineVariants = {
+  "loop-engineering": "loop-control",
+  stocklane: "atomic-transaction",
+  "credit-risk-explorer": "model-inference",
+} as const;
+
 const projectEvidenceImages = {
   "loop-engineering": /loop-engineering-system\.svg/,
   stocklane: /stocklane-order\.png/,
@@ -461,6 +467,10 @@ for (const slug of projectSlugs) {
 
     const pipeline = page.locator("[data-case-pipeline]");
     await expect(pipeline).toHaveCount(1);
+    await expect(pipeline).toHaveAttribute(
+      "data-case-pipeline-variant",
+      projectPipelineVariants[slug],
+    );
     await expect(pipeline.getByRole("list")).toHaveAttribute("aria-label", /workflow$/);
     await expect(pipeline.locator("[data-case-pipeline-stage]")).toHaveCount(projectPipelines[slug].length);
     await expect(pipeline.locator("[data-case-pipeline-title]")).toHaveText([...projectPipelines[slug]]);

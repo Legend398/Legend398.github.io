@@ -129,7 +129,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
               <h2>How it works</h2>
               <p>The complete path from input to a finished, inspectable result.</p>
             </div>
-            <CasePipeline projectTitle={project.title} stages={project.pipeline} />
+            <CasePipeline projectTitle={project.title} visual={project.visual} stages={project.pipeline} />
           </section>
 
           <section id="what-i-built" className="caseBuiltSection">
