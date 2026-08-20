@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CasePipeline } from "@/components/CasePipeline";
 import { ProjectVisual } from "@/components/ProjectVisual";
 import { getProject, profile, projects } from "@/lib/portfolio";
 
@@ -87,9 +88,9 @@ export default async function WorkPage({ params }: WorkPageProps) {
       </div>
 
       <section className="caseEvidence" aria-labelledby="evidence-title">
-        <p className="sectionKicker" id="evidence-title">At a glance</p>
+        <p className="sectionKicker" id="evidence-title">Case in one minute</p>
         <dl>
-          {project.evidence.map((item) => (
+          {project.overview.map((item) => (
             <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>
           ))}
         </dl>
@@ -98,100 +99,79 @@ export default async function WorkPage({ params }: WorkPageProps) {
       <div className="caseBody">
         <aside className="caseRail" aria-label="Case study sections">
           <span>CASE FILE</span>
-          <a href="#problem">01 / Problem</a>
-          <a href="#constraints">02 / Constraints</a>
-          <a href="#decisions">03 / Decisions</a>
-          <a href="#verification">04 / Verification</a>
-          <a href="#tradeoffs">05 / Trade-offs</a>
+          <a href="#problem"><span className="caseRailFull">01 / Problem</span><span className="caseRailShort">Problem</span></a>
+          <a href="#solution"><span className="caseRailFull">02 / Solution</span><span className="caseRailShort">Solution</span></a>
+          <a href="#how-it-works"><span className="caseRailFull">03 / How it works</span><span className="caseRailShort">Flow</span></a>
+          <a href="#what-i-built"><span className="caseRailFull">04 / What I built</span><span className="caseRailShort">Built</span></a>
+          <a href="#results"><span className="caseRailFull">05 / Results</span><span className="caseRailShort">Results</span></a>
         </aside>
 
         <div className="caseNarrative">
-          <section id="problem">
-            <p className="sectionKicker">01 / Problem</p>
-            <h2>{project.strapline}</h2>
-            <p className="caseLead">{project.problem}</p>
-          </section>
+          <div className="caseOpening">
+            <section id="problem" className="caseStorySection caseStorySection-problem">
+              <p className="sectionKicker">01 / Problem</p>
+              <h2>Problem</h2>
+              <p className="caseStatement">{project.problem.statement}</p>
+              <p className="caseDetail">{project.problem.detail}</p>
+            </section>
 
-          <section id="constraints">
-            <p className="sectionKicker">02 / Constraints</p>
-            <h2>The boundaries shaped the product.</h2>
-            <ul className="numberList">
-              {project.constraints.map((constraint, index) => (
-                <li key={constraint}><span>{String(index + 1).padStart(2, "0")}</span>{constraint}</li>
-              ))}
-            </ul>
-          </section>
+            <section id="solution" className="caseStorySection caseStorySection-solution">
+              <p className="sectionKicker">02 / Solution</p>
+              <h2>Solution</h2>
+              <p className="caseStatement">{project.solution.statement}</p>
+              <p className="caseDetail">{project.solution.detail}</p>
+            </section>
+          </div>
 
-          <section id="decisions">
-            <p className="sectionKicker">03 / Decisions</p>
-            <h2>What I chose—and why.</h2>
-            <div className="decisionList">
-              {project.decisions.map((decision, index) => (
-                <article key={decision.title}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <h3>{decision.title}</h3>
-                  <p>{decision.body}</p>
-                </article>
-              ))}
+          <section id="how-it-works" className="caseFlowSection">
+            <div className="caseSectionIntro">
+              <p className="sectionKicker">03 / How it works</p>
+              <h2>How it works</h2>
+              <p>The complete path from input to a finished, inspectable result.</p>
             </div>
+            <CasePipeline projectTitle={project.title} stages={project.pipeline} />
           </section>
 
-          {project.slug === "stocklane" ? (
-            <figure className="caseSecondaryImage">
-              <div>
-                <Image
-                  src="/work/stocklane-order.png"
-                  alt="Stocklane order result showing that two units were reserved and available stock updated before fulfilment."
-                  fill
-                  priority
-                  sizes="(max-width: 900px) 100vw, 900px"
-                />
-              </div>
-              <figcaption>The interface explains the reservation state before the terminal action.</figcaption>
-            </figure>
-          ) : null}
-
-          {project.slug === "loop-engineering" ? (
-            <figure className="caseSecondaryImage caseSecondaryImage-contain">
-              <div>
-                <Image
-                  src="/work/loop-engineering-system.svg"
-                  alt="Loop Engineering architecture showing the task state machine, verification, checker review, and stale-evidence return path."
-                  fill
-                  sizes="(max-width: 900px) 100vw, 900px"
-                />
-              </div>
-              <figcaption>The repository documents the control flow and the conditions that return work to implementation.</figcaption>
-            </figure>
-          ) : null}
-
-          {project.slug === "credit-risk-explorer" ? (
-            <figure className="caseSecondaryImage caseSecondaryImage-contain">
-              <div>
-                <Image
-                  src="/work/credit-risk-shap.png"
-                  alt="SHAP summary chart from the Credit Risk Explorer model showing how input features influence risk estimates."
-                  fill
-                  sizes="(max-width: 900px) 100vw, 900px"
-                />
-              </div>
-              <figcaption>The project includes model-level feature analysis alongside the user-facing educational assessment.</figcaption>
-            </figure>
-          ) : null}
-
-          <section id="verification" className="verificationSection">
-            <p className="sectionKicker">04 / Verification</p>
-            <h2>What the evidence establishes.</h2>
-            <ul>
-              {project.verification.map((proof) => <li key={proof}>{proof}</li>)}
-            </ul>
+          <section id="what-i-built" className="caseBuiltSection">
+            <div className="caseSectionIntro">
+              <p className="sectionKicker">04 / What I built</p>
+              <h2>What I built</h2>
+              <p>The concrete parts I designed, implemented, and tested.</p>
+            </div>
+            <ol className="contributionList">
+              {project.contributions.map((contribution, index) => (
+                <li key={contribution.title}>
+                  <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{contribution.title}</h3>
+                  <p>{contribution.body}</p>
+                </li>
+              ))}
+            </ol>
           </section>
 
-          <section id="tradeoffs">
-            <p className="sectionKicker">05 / Trade-offs</p>
-            <h2>The honest edge of the work.</h2>
-            <div className="tradeoffList">
-              {project.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)}
+          <section id="results" className="caseResultsSection">
+            <div className="caseSectionIntro caseSectionIntro-inverse">
+              <p className="sectionKicker">05 / Results</p>
+              <h2>Results</h2>
+              <p>What the finished system demonstrates through working behavior, tests, and project artifacts.</p>
+            </div>
+            <div className="caseResultsGrid">
+              <ul className="resultList">
+                {project.results.map((result) => <li key={result}>{result}</li>)}
+              </ul>
+              <figure className={`caseSecondaryImage ${project.evidenceImage.fit === "contain" ? "caseSecondaryImage-contain" : ""}`}>
+                <div>
+                  <Image
+                    data-case-evidence-image
+                    src={project.evidenceImage.src}
+                    alt={project.evidenceImage.alt}
+                    fill
+                    loading="eager"
+                    sizes="(max-width: 900px) 100vw, 760px"
+                  />
+                </div>
+                <figcaption>{project.evidenceImage.caption}</figcaption>
+              </figure>
             </div>
           </section>
         </div>

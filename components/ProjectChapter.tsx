@@ -3,7 +3,7 @@ import type { Project } from "@/lib/portfolio";
 import { ProjectVisual } from "@/components/ProjectVisual";
 
 export function ProjectChapter({ project }: { project: Project }) {
-  const result = project.evidence.find((item) => item.label === "Proof");
+  const result = project.overview.find((item) => item.label === "Result");
 
   return (
     <article className={`projectChapter projectChapter-${project.visual}`} id={project.slug}>

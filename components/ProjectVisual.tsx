@@ -17,6 +17,7 @@ export function ProjectVisual({ project, priority = false }: ProjectVisualProps)
     <figure className={`projectVisual projectVisual-${project.visual}`}>
       <div className="imageFrame">
         <Image
+          data-case-primary-image
           src={project.image}
           alt={project.imageAlt}
           fill

@@ -2,6 +2,43 @@ import { chromium, expect, test, type Locator, type Page } from "@playwright/tes
 
 const projectSlugs = ["loop-engineering", "stocklane", "credit-risk-explorer"] as const;
 
+const projectPipelines = {
+  "loop-engineering": [
+    "Start the task",
+    "Save the plan",
+    "Implement",
+    "Run fresh checks",
+    "Independent check",
+    "Finish",
+  ],
+  stocklane: [
+    "Receive the order",
+    "Validate every line",
+    "Reserve together",
+    "Show reserved state",
+    "Fulfil or cancel",
+  ],
+  "credit-risk-explorer": [
+    "Collect 8 inputs",
+    "Validate values",
+    "Apply preprocessing",
+    "Run XGBoost",
+    "Explain the output",
+  ],
+} as const;
+
+const projectEvidenceImages = {
+  "loop-engineering": /loop-engineering-system\.svg/,
+  stocklane: /stocklane-order\.png/,
+  "credit-risk-explorer": /credit-risk-result\.png/,
+} as const;
+
+const projectPrimaryImages = {
+  "loop-engineering": /loop-engineering-showcase\.jpeg/,
+  stocklane: /stocklane\.png/,
+  "credit-risk-explorer": /credit-risk-dashboard-current\.png/,
+} as const;
+
 async function expectLoadedImages(page: Page) {
   const images = page.locator("[data-project-primary]");
   await expect(images).toHaveCount(3);
@@ -18,6 +55,7 @@ async function expectLoadedImages(page: Page) {
 }
 
 async function expectDecodedImage(image: Locator) {
+  await image.scrollIntoViewIfNeeded();
   await expect(image).toBeVisible();
   await expect.poll(() => image.evaluate((element) => {
     const candidate = element as HTMLImageElement;
@@ -346,7 +384,10 @@ test("project cards present real images as document sheets with restrained hover
 
   const firstSheet = sheets.first();
   const firstImage = firstSheet.locator("[data-project-primary]");
-  const sheetBoxBefore = await firstSheet.boundingBox();
+  const sheetBoxBefore = await firstSheet.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height };
+  });
   await media.first().hover();
   await expect.poll(() => firstImage.evaluate((element) => {
     const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
@@ -356,7 +397,10 @@ test("project cards present real images as document sheets with restrained hover
     const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
     return matrix.a;
   })).toBeLessThanOrEqual(1.055);
-  const sheetBoxAfter = await firstSheet.boundingBox();
+  const sheetBoxAfter = await firstSheet.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height };
+  });
   expect(sheetBoxAfter).toEqual(sheetBoxBefore);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -394,24 +438,68 @@ test("homepage lists the seven unique certifications from both CVs", async ({ pa
 });
 
 for (const slug of projectSlugs) {
-  test(`case study ${slug} exposes decisions and verification`, async ({ page }) => {
+  test(`case study ${slug} explains the problem, solution, workflow, contribution, and results`, async ({ page }) => {
     await page.goto(`/work/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "What I chose—and why." })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "What the evidence establishes." })).toBeVisible();
+    await expect(page.locator(".caseNarrative h2")).toHaveText([
+      "Problem",
+      "Solution",
+      "How it works",
+      "What I built",
+      "Results",
+    ]);
+    await expect(page.getByText("Case in one minute", { exact: true })).toBeVisible();
+    await expect(page.getByText(/limitations|trade[- ]?offs|the honest edge/i)).toHaveCount(0);
+    await expect(page.locator("#constraints, #decisions, #verification, #tradeoffs, #limitations")).toHaveCount(0);
+
+    const rail = page.getByRole("complementary").filter({ has: page.getByText("01 / Problem", { exact: true }) });
+    await expect(rail.locator('a[href="#problem"]')).toHaveCount(1);
+    await expect(rail.locator('a[href="#solution"]')).toHaveCount(1);
+    await expect(rail.locator('a[href="#how-it-works"]')).toHaveCount(1);
+    await expect(rail.locator('a[href="#what-i-built"]')).toHaveCount(1);
+    await expect(rail.locator('a[href="#results"]')).toHaveCount(1);
+
+    const pipeline = page.locator("[data-case-pipeline]");
+    await expect(pipeline).toHaveCount(1);
+    await expect(pipeline.getByRole("list")).toHaveAttribute("aria-label", /workflow$/);
+    await expect(pipeline.locator("[data-case-pipeline-stage]")).toHaveCount(projectPipelines[slug].length);
+    await expect(pipeline.locator("[data-case-pipeline-title]")).toHaveText([...projectPipelines[slug]]);
+
+    const primaryImage = page.locator("[data-case-primary-image]");
+    await expectDecodedImage(primaryImage);
+    await expect(primaryImage).toHaveAttribute("src", projectPrimaryImages[slug]);
+    const evidenceImage = page.locator("[data-case-evidence-image]");
+    await expectDecodedImage(evidenceImage);
+    await expect(evidenceImage).toHaveAttribute("src", projectEvidenceImages[slug]);
     await expect(page.getByRole("navigation", { name: "Next case study" })).toBeVisible();
   });
-}
 
-test("stocklane case study reflows at mobile and zoom-equivalent widths", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  for (const width of [390, 640]) {
-    await page.setViewportSize({ width, height: 844 });
-    await page.goto("/work/stocklane");
-    await expect(page.getByRole("heading", { level: 1, name: "Stocklane" })).toBeVisible();
+  test(`case study ${slug} reflows without horizontal overflow on mobile`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`/work/${slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("[data-case-pipeline]")).toBeVisible();
+    await expect(page.locator("[data-case-evidence-image]")).toBeVisible();
+    const headerBox = await page.locator("[data-site-header]").boundingBox();
+    const toplineBox = await page.locator(".caseTopline").boundingBox();
+    expect(headerBox && toplineBox).toBeTruthy();
+    if (headerBox && toplineBox) {
+      expect(toplineBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height - 1);
+    }
+    const rail = page.getByRole("complementary", { name: "Case study sections" });
+    await rail.scrollIntoViewIfNeeded();
+    for (const link of await rail.getByRole("link").all()) {
+      const box = await link.boundingBox();
+      expect(box).not.toBeNull();
+      if (box) {
+        expect(box.x).toBeGreaterThanOrEqual(-1);
+        expect(box.x + box.width).toBeLessThanOrEqual(391);
+      }
+    }
     await expectNoHorizontalOverflow(page);
-  }
-});
+  });
+}
 
 test("publishing metadata exposes canonical, social, robots, and sitemap surfaces", async ({ page, request }) => {
   await page.goto("/work/stocklane");

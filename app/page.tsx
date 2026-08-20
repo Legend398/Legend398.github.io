@@ -103,7 +103,7 @@ export default function HomePage() {
               </div>
               <p>
                 Three real builds: an agent workflow, an inventory system, and an explained machine-learning app.
-                Open a case study for the decisions and verification behind each one.
+                Open a case study to see the problem, the solution, how it works, and what I built.
               </p>
             </header>
 

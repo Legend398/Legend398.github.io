@@ -13,8 +13,11 @@ const requiredFiles = [
   "out/work/stocklane/index.html",
   "out/work/credit-risk-explorer/index.html",
   "out/work/loop-engineering-showcase.jpeg",
+  "out/work/loop-engineering-system.svg",
   "out/work/stocklane.png",
-  "out/work/credit-risk-dashboard-scored.png",
+  "out/work/stocklane-order.png",
+  "out/work/credit-risk-dashboard-current.png",
+  "out/work/credit-risk-result.png",
 ];
 
 const missingFiles = requiredFiles.filter((file) => !existsSync(resolve(root, file)));
@@ -44,6 +47,18 @@ if (!homeHtml.includes("https://legend398.github.io")) {
 for (const route of ["/work/loop-engineering", "/work/stocklane", "/work/credit-risk-explorer"]) {
   if (!sitemap.includes(`https://legend398.github.io${route}`)) {
     throw new Error(`Sitemap is missing ${route}.`);
+  }
+}
+
+for (const slug of ["loop-engineering", "stocklane", "credit-risk-explorer"]) {
+  const caseHtml = readFileSync(resolve(root, `out/work/${slug}/index.html`), "utf8");
+  for (const heading of ["Problem", "Solution", "How it works", "What I built", "Results"]) {
+    if (!caseHtml.includes(`>${heading}<`)) {
+      throw new Error(`${slug} is missing the ${heading} case-study section.`);
+    }
+  }
+  if (/limitations|trade-offs|the honest edge/i.test(caseHtml)) {
+    throw new Error(`${slug} still exposes removed limitations or trade-off copy.`);
   }
 }
 
