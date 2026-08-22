@@ -31,30 +31,27 @@ export default function HomePage() {
 
           <div className={styles.studioHeroMeta}>
             <p className={styles.studioHeroRole}>SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE</p>
-            <p>System design first.<br />Tested delivery.</p>
-            <p>
+            <p className={styles.studioHeroPrinciple}>System design first.<br />Tested delivery.</p>
+            <p className={styles.studioHeroBio}>
               I build dependable software systems, agentic developer tools, and machine-learning
               applications—from interface and architecture to testing and delivery.
             </p>
           </div>
 
           <div className={styles.studioHeroClaim}>
-            <p>Himanshu Kumar · India · 2026</p>
-            <h1 id="hero-title">Engineering software, AI agents, and data products.</h1>
-            <div className={styles.studioHeroActions}>
-              <a data-primary-action href="#work">
-                View selected work <span aria-hidden="true">↓</span>
-              </a>
-              <a aria-label="Download résumé" className={styles.resumeAction} download href={profile.resume}>
-                Download résumé
-                <svg aria-hidden="true" viewBox="0 0 20 20">
-                  <path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 16h12" />
-                </svg>
-              </a>
-            </div>
+            <p>
+              <span className={styles.studioHeroIdentity}>Himanshu Kumar · India · 2026</span>
+              <span className={styles.studioHeroMobileRole}>Software engineering · Agentic AI · Data science</span>
+            </p>
+            <h1 id="hero-title">Software, AI agents &amp; data products.</h1>
           </div>
 
-          <span className={styles.studioHeroCoordinates} aria-hidden="true">Systems / software / AI</span>
+          <div className={styles.studioHeroUtility}>
+            <a data-primary-action href="#work">
+              View selected work <span aria-hidden="true">↓</span>
+            </a>
+            <span aria-hidden="true">Selected work · 03 systems</span>
+          </div>
         </section>
 
         <section className={styles.about} id="about" aria-labelledby="about-title">

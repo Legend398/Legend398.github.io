@@ -129,7 +129,7 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await expect(page.getByText("SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", {
     level: 1,
-    name: "Engineering software, AI agents, and data products.",
+    name: "Software, AI agents & data products.",
   })).toBeVisible();
   await expect(page.getByText(/dependable software systems, agentic developer tools, and machine-learning applications/i)).toBeVisible();
   await expect(page.getByText("I build software with craft & proof.", { exact: true })).toHaveCount(0);
@@ -360,6 +360,9 @@ test("keyboard navigation exposes the skip link and primary navigation", async (
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#main-content$/);
 
+  const menu = page.locator('summary[aria-label="Open navigation menu"]');
+  await expect(menu).toBeVisible();
+  await menu.click();
   const navigation = page.getByRole("navigation", { name: "Primary navigation" });
   await expect(navigation).toBeVisible();
   const firstNavigationLink = navigation.getByRole("link").first();

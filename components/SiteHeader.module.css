@@ -1,27 +1,33 @@
 .header {
-  align-items: flex-start;
+  align-items: center;
   background: rgba(6, 10, 9, 0.96);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: white;
   display: flex;
   font: 700 10px / 1.2 var(--font-mono), monospace;
-  gap: 32px;
   inset: 0 0 auto;
   justify-content: space-between;
   letter-spacing: 0.065em;
   min-height: 76px;
-  padding: 18px clamp(18px, 4vw, 56px);
+  padding: 0 clamp(18px, 4vw, 60px);
   pointer-events: none;
   position: fixed;
   text-transform: uppercase;
   z-index: 190;
 }
 
+:global(body:has([data-v8-hero])) .header {
+  background: transparent;
+  border-bottom-color: transparent;
+  color: #080d10;
+  position: absolute;
+}
+
 .header a {
   align-items: center;
   color: inherit;
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   pointer-events: auto;
   position: relative;
   text-decoration: none;
@@ -29,7 +35,7 @@
 
 .header a::after {
   background: currentColor;
-  bottom: 2px;
+  bottom: 4px;
   content: "";
   height: 1px;
   left: 0;
@@ -48,35 +54,111 @@
 
 .brand {
   font-family: var(--font-sans), sans-serif;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: -0.025em;
 }
 
-.header nav {
+.desktopNav {
   align-items: center;
   display: flex;
-  gap: clamp(14px, 2.5vw, 40px);
+  gap: clamp(22px, 3.6vw, 54px);
+}
+
+.resumeLink {
+  gap: 8px;
+}
+
+.mobileMenu {
+  display: none;
+  pointer-events: auto;
+  position: relative;
+}
+
+.mobileMenu summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  height: 44px;
+  justify-content: center;
+  list-style: none;
+  position: relative;
+  width: 44px;
+}
+
+.mobileMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobileMenu summary span {
+  background: currentColor;
+  height: 1.5px;
+  position: absolute;
+  transition: transform 180ms ease, top 180ms ease;
+  width: 24px;
+}
+
+.mobileMenu summary span:first-child {
+  top: 17px;
+}
+
+.mobileMenu summary span:last-child {
+  top: 26px;
+}
+
+.mobileMenu[open] summary span:first-child {
+  top: 22px;
+  transform: rotate(45deg);
+}
+
+.mobileMenu[open] summary span:last-child {
+  top: 22px;
+  transform: rotate(-45deg);
+}
+
+.mobileMenu nav {
+  background: rgba(247, 240, 229, 0.97);
+  border: 1px solid rgba(8, 13, 16, 0.22);
+  box-shadow: 0 24px 60px rgba(20, 60, 78, 0.2);
+  display: grid;
+  min-width: 196px;
+  padding: 10px 16px;
+  position: absolute;
+  right: 0;
+  top: 48px;
+}
+
+.mobileMenu nav a {
+  border-bottom: 1px solid rgba(8, 13, 16, 0.12);
+  justify-content: space-between;
+}
+
+.mobileMenu nav a:last-child {
+  border-bottom: 0;
 }
 
 @media (max-width: 720px) {
   .header {
-    font-size: 10px;
-    min-height: 76px;
+    min-height: 64px;
     padding-inline: 18px;
   }
 
-  .header nav {
-    gap: 14px;
+  .brand {
+    font-size: 12px;
   }
 
-  .header nav a:nth-child(2),
-  .header nav a:nth-child(3) {
+  .desktopNav {
     display: none;
+  }
+
+  .mobileMenu {
+    display: block;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .header a::after {
+  .header a::after,
+  .mobileMenu summary span {
     transition: none;
   }
 }
