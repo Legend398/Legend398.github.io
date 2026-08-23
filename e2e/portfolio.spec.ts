@@ -126,7 +126,7 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   await page.goto("/");
 
   await expect(page).toHaveTitle(/Himanshu Kumar/);
-  await expect(page.getByText("SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Software,\s*Agentic AI & Data/).first()).toBeVisible();
   await expect(page.getByRole("heading", {
     level: 1,
     name: "Software, AI agents & data products.",
@@ -228,6 +228,31 @@ test("profile ripple mounts only while the About card is visible", async ({ page
   await expect(ripple).toHaveCount(0);
 });
 
+test("hero becomes ready while the downloaded GLTF is still pending", async ({ page }) => {
+  let releaseModelRequest: (() => void) | undefined;
+  await page.route("**/model/hello.gltf", async (route) => {
+    await new Promise<void>((resolve) => {
+      releaseModelRequest = resolve;
+    });
+    await route.abort();
+  });
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+
+  try {
+    const glass = page.locator('[data-v8-hero] [data-glass-stage]');
+    await expect(glass).toHaveAttribute("data-render-state", "ready");
+    await expect(glass).toHaveAttribute("data-model-source", "generated-path");
+    await expect(glass).toHaveAttribute("data-renderer", "webgl");
+    await expect(glass).toHaveAttribute("data-scene-mode", "webgl");
+    await expect(glass).toHaveClass(/isReady/);
+    await expect(glass.locator("canvas")).toBeVisible();
+  } finally {
+    releaseModelRequest?.();
+  }
+});
+
 test("v8 hero keeps its sculpted glass render ready and sharp while idle", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -235,8 +260,12 @@ test("v8 hero keeps its sculpted glass render ready and sharp while idle", async
 
   const glass = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(glass).toHaveAttribute("data-glass-word", "hello");
+  await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
   await expect(glass).toHaveAttribute("data-scene-mode", "webgl");
   await expect(glass).toHaveAttribute("data-render-state", "ready");
+  await expect(glass).toHaveAttribute("data-shimmer-state", "animated");
+  await expect(glass).toHaveAttribute("data-sticker-count", "14");
+  await expect(glass).toHaveAttribute("data-sticker-state", "falling");
   await expect(glass).toHaveAttribute("data-active-ripples", "0");
   const canvas = glass.locator("canvas");
   await expect(canvas).toBeVisible();
@@ -252,10 +281,13 @@ test("v8 hero keeps its sculpted glass render ready and sharp while idle", async
   });
   expect(backingStore.pixelWidth).toBeGreaterThanOrEqual(backingStore.cssWidth);
   expect(backingStore.pixelHeight).toBeGreaterThanOrEqual(backingStore.cssHeight);
-  await page.waitForTimeout(500);
+  const firstMotionTick = Number(await glass.getAttribute("data-motion-tick"));
+  await page.waitForTimeout(650);
   await expect(canvas).toBeVisible();
   await expect(glass).toHaveAttribute("data-render-state", "ready");
   await expect(glass).toHaveAttribute("data-active-ripples", "0");
+  await expect.poll(async () => Number(await glass.getAttribute("data-motion-tick"))).toBeGreaterThan(firstMotionTick);
+  await expect.poll(async () => Number(await glass.getAttribute("data-visible-stickers"))).toBeGreaterThan(0);
 });
 
 test("desktop and mobile first viewports contain the v8 hero without collisions or overflow", async ({ page }) => {
@@ -321,6 +353,63 @@ test("direct movement over the sculpted word creates bounded ripples that settle
   await expect(scene).toHaveAttribute("data-render-state", "ready");
 });
 
+test("hero cursor field refracts while the flare follows movement in real time", async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
+  await expect(scene).toHaveAttribute(
+    "data-render-layers",
+    "background+stickers|glass|fluid|flare",
+  );
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle");
+  await expect(scene).toHaveAttribute("data-flare-state", "active");
+  const canvas = scene.locator("canvas");
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  const captureCanvas = () => page.screenshot({ clip: canvasBox! });
+  await scene.evaluate((element) => {
+    (element as HTMLElement).dataset.qaFreezeAmbient = "true";
+  });
+  await page.waitForTimeout(120);
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle");
+  await expect(scene).toHaveAttribute("data-flare-state", "active");
+  const idlePixels = await captureCanvas();
+  await scene.evaluate((element) => {
+    (element as HTMLElement).dataset.qaHoldFluid = "true";
+  });
+
+  const hitPoint = await movePointerToGlassWord(page, scene);
+  await page.mouse.move(hitPoint.x - 80, hitPoint.y - 18, { steps: 10 });
+  await page.mouse.move(hitPoint.x + 80, hitPoint.y + 18, { steps: 16 });
+  const activeStates = await page.evaluate(async ({ x, y }) => {
+    window.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      pointerType: "mouse",
+    }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const element = document.querySelector("[data-glass-stage]");
+    return [
+      element?.getAttribute("data-fluid-state"),
+      element?.getAttribute("data-flare-state"),
+    ].join("|");
+  }, hitPoint);
+  expect(activeStates).toBe("active|active");
+  const movingPixels = await captureCanvas();
+
+  await scene.evaluate((element) => {
+    delete (element as HTMLElement).dataset.qaHoldFluid;
+  });
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await expect(scene).toHaveAttribute("data-flare-state", "active");
+  const settledPixels = await captureCanvas();
+  expect(movingPixels.equals(idlePixels)).toBe(false);
+  expect(movingPixels.equals(settledPixels)).toBe(false);
+});
+
 test("pointer movement outside the sculpted word does not create word ripples", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
@@ -331,6 +420,45 @@ test("pointer movement outside the sculpted word does not create word ripples", 
   await page.waitForTimeout(250);
   await expect(scene).toHaveAttribute("data-pointer-contact", "false");
   await expect(scene).toHaveAttribute("data-active-ripples", "0");
+});
+
+test("hero camera returns to neutral and glass tint follows theme tokens", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
+  await expect(scene).toHaveAttribute("data-scene-mode", "webgl");
+  await expect(scene).toHaveAttribute("data-glass-theme", "light");
+  await expect(scene).toHaveAttribute("data-glass-tint-base", "#ffffff");
+  await expect(scene).toHaveAttribute("data-glass-tint-accent", "#009dff");
+
+  await page.mouse.move(1_320, 450);
+  await expect(scene).toHaveAttribute("data-pointer-inside", "true");
+  await expect.poll(async () => Math.abs(Number(await scene.getAttribute("data-camera-parallax-x")))).toBeGreaterThan(0.03);
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true,
+      clientX: -40,
+      clientY: -40,
+      pointerType: "mouse",
+    }));
+  });
+  await expect(scene).toHaveAttribute("data-pointer-inside", "false");
+  await expect.poll(async () => Math.abs(Number(await scene.getAttribute("data-camera-parallax-x"))), {
+    timeout: 3_000,
+  }).toBeLessThan(0.008);
+
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+  await expect(scene).toHaveAttribute("data-glass-theme", "dark");
+  await expect(scene).toHaveAttribute("data-glass-tint-base", "#dff6ff");
+  await expect(scene).toHaveAttribute("data-glass-tint-accent", "#5f8fff");
+
+  await page.evaluate(() => { delete document.documentElement.dataset.theme; });
+  await expect(scene).toHaveAttribute("data-glass-theme", "light");
+  await expect(scene).toHaveAttribute("data-glass-tint-base", "#ffffff");
+  await expect(scene).toHaveAttribute("data-glass-tint-accent", "#009dff");
 });
 
 test("hero falls back cleanly when WebGL is unavailable", async () => {

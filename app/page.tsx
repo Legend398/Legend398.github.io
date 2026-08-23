@@ -30,7 +30,7 @@ export default function HomePage() {
           <div className={styles.kineticGrid} aria-hidden="true" />
 
           <div className={styles.studioHeroMeta}>
-            <p className={styles.studioHeroRole}>SOFTWARE ENGINEERING · AGENTIC AI · DATA SCIENCE</p>
+            <p className={styles.studioHeroRole}>Software,<br />Agentic AI &amp; Data</p>
             <p className={styles.studioHeroPrinciple}>System design first.<br />Tested delivery.</p>
             <p className={styles.studioHeroBio}>
               I build dependable software systems, agentic developer tools, and machine-learning
@@ -39,10 +39,6 @@ export default function HomePage() {
           </div>
 
           <div className={styles.studioHeroClaim}>
-            <p>
-              <span className={styles.studioHeroIdentity}>Himanshu Kumar · India · 2026</span>
-              <span className={styles.studioHeroMobileRole}>Software engineering · Agentic AI · Data science</span>
-            </p>
             <h1 id="hero-title">Software, AI agents &amp; data products.</h1>
           </div>
 

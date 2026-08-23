@@ -22,6 +22,9 @@
 .kineticHero {
   --hero-cream: #f7f0e5;
   --hero-grid: rgba(18, 47, 61, 0.14);
+  --hero-glass-tint-accent: #009dff;
+  --hero-glass-tint-base: #ffffff;
+  --hero-glass-tint-soft: #e9f7ff;
   --hero-ink: #080d10;
   --hero-progress: 0;
   --hero-sky: #b9d9ec;
@@ -34,6 +37,33 @@
   min-height: 760px;
   overflow: hidden;
   position: relative;
+}
+
+:global(html.dark) .studioHero,
+:global(html.dark) .kineticHero,
+:global(html[data-theme="dark"]) .studioHero,
+:global(html[data-theme="dark"]) .kineticHero {
+  --hero-glass-tint-accent: #5f8fff;
+  --hero-glass-tint-base: #dff6ff;
+  --hero-glass-tint-soft: #8bc8ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .studioHero,
+  .kineticHero {
+    --hero-glass-tint-accent: #5f8fff;
+    --hero-glass-tint-base: #dff6ff;
+    --hero-glass-tint-soft: #8bc8ff;
+  }
+
+  :global(html.light) .studioHero,
+  :global(html.light) .kineticHero,
+  :global(html[data-theme="light"]) .studioHero,
+  :global(html[data-theme="light"]) .kineticHero {
+    --hero-glass-tint-accent: #009dff;
+    --hero-glass-tint-base: #ffffff;
+    --hero-glass-tint-soft: #e9f7ff;
+  }
 }
 
 .kineticHero::before {
@@ -69,7 +99,7 @@
 
 .studioHeroMeta {
   display: grid;
-  font: 560 clamp(11px, 0.92vw, 14px) / 1.5 var(--font-mono), monospace;
+  font: 560 clamp(13px, 1.08vw, 16px) / 1.48 var(--font-mono), monospace;
   gap: clamp(28px, 7vw, 130px);
   grid-template-columns: 1fr 1fr 1.35fr;
   letter-spacing: -0.015em;
@@ -96,14 +126,16 @@
 }
 
 .studioHeroRole {
-  font-weight: 700;
-  letter-spacing: 0.055em;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(23px, 2vw, 29px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
   max-width: 760px !important;
-  text-transform: uppercase;
 }
 
 .studioHeroClaim {
-  bottom: clamp(76px, 9.4vh, 104px);
+  bottom: clamp(104px, 12vh, 122px);
   left: clamp(22px, 4vw, 60px);
   position: absolute;
   transform: translateY(calc(var(--hero-progress) * -52px));
@@ -132,7 +164,7 @@
   font-weight: 800;
   letter-spacing: -0.061em;
   line-height: 0.89;
-  margin-top: 14px;
+  margin-top: 0;
   max-width: 820px;
   text-transform: uppercase;
   text-wrap: pretty;
@@ -1031,6 +1063,16 @@
   }
 }
 
+@media (min-width: 761px) and (max-height: 900px) {
+  .studioHeroMeta {
+    padding-top: 78px;
+  }
+
+  .studioHeroClaim {
+    bottom: 58px;
+  }
+}
+
 @media (max-width: 760px) {
   .studioHero,
   .kineticHero {
@@ -1039,7 +1081,7 @@
   }
 
   .studioHeroMeta {
-    bottom: 62px;
+    bottom: 120px;
     display: block;
     font-size: clamp(11px, 3.4vw, 13px);
     left: 24px;
@@ -1060,7 +1102,7 @@
   .studioHeroClaim {
     bottom: auto;
     left: 24px;
-    top: 80px;
+    top: 76px;
     width: calc(100% - 48px);
   }
 
@@ -1073,11 +1115,11 @@
   }
 
   .studioHeroClaim h1 {
-    font-size: clamp(34px, 9.4vw, 40px);
-    letter-spacing: -0.057em;
+    font-size: 34px;
+    letter-spacing: -0.048em;
     line-height: 0.91;
-    margin-top: 10px;
-    max-width: 348px;
+    margin-top: 0;
+    max-width: 300px;
   }
 
   .studioHeroUtility {
