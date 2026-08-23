@@ -361,16 +361,26 @@ test("hero cursor field refracts while the flare follows movement in real time",
   const scene = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(scene).toHaveAttribute(
     "data-render-layers",
-    "background+stickers|glass|fluid|flare",
+    "background+stickers|glass+ripples|motion|surface|refraction+dispersion|caustics|composite",
   );
+  await expect(scene).toHaveAttribute("data-postfx-profile", "five-pass-optical");
+  await expect(scene).toHaveAttribute("data-postfx-storage", "rgba8-packed");
   await expect(scene).toHaveAttribute("data-fluid-state", "idle");
+  await expect(scene).toHaveAttribute("data-postfx-passes", "2");
   await expect(scene).toHaveAttribute("data-flare-state", "active");
   const canvas = scene.locator("canvas");
   const canvasBox = await canvas.boundingBox();
   expect(canvasBox).not.toBeNull();
   const captureCanvas = () => page.screenshot({ clip: canvasBox! });
+  const hitPoint = await movePointerToGlassWord(page, scene);
+  await page.mouse.move(8, 8);
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await expect.poll(async () => Number(await scene.getAttribute("data-active-ripples")), {
+    timeout: 3_000,
+  }).toBe(0);
   await scene.evaluate((element) => {
     (element as HTMLElement).dataset.qaFreezeAmbient = "true";
+    (element as HTMLElement).dataset.qaPostFxOnly = "true";
   });
   await page.waitForTimeout(120);
   await expect(scene).toHaveAttribute("data-fluid-state", "idle");
@@ -380,7 +390,6 @@ test("hero cursor field refracts while the flare follows movement in real time",
     (element as HTMLElement).dataset.qaHoldFluid = "true";
   });
 
-  const hitPoint = await movePointerToGlassWord(page, scene);
   await page.mouse.move(hitPoint.x - 80, hitPoint.y - 18, { steps: 10 });
   await page.mouse.move(hitPoint.x + 80, hitPoint.y + 18, { steps: 16 });
   const activeStates = await page.evaluate(async ({ x, y }) => {
@@ -398,6 +407,9 @@ test("hero cursor field refracts while the flare follows movement in real time",
     ].join("|");
   }, hitPoint);
   expect(activeStates).toBe("active|active");
+  await expect(scene).toHaveAttribute("data-postfx-passes", "5");
+  await expect(scene).toHaveAttribute("data-camera-parallax-x", "0.0000");
+  await expect(scene).toHaveAttribute("data-camera-parallax-y", "0.0000");
   const movingPixels = await captureCanvas();
 
   await scene.evaluate((element) => {
