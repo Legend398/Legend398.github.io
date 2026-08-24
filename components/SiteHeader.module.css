@@ -69,6 +69,15 @@
   gap: 8px;
 }
 
+.downloadIcon {
+  height: 15px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 15px;
+}
+
 .mobileMenu {
   display: none;
   pointer-events: auto;

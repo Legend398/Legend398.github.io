@@ -252,7 +252,7 @@ export default function HomePage() {
                 <a href={profile.linkedin} target="_blank" rel="noreferrer">
                   LinkedIn<span className="srOnly"> (opens in a new tab)</span>
                 </a>
-                <a href={profile.resume} download>Résumé</a>
+                <a href={profile.resume} download>Resume ↓</a>
               </nav>
               <a href="#main-content">Back to top <span aria-hidden="true">↑</span></a>
             </footer>
