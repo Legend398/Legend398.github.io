@@ -616,10 +616,8 @@
 
 .opticalRelay span {
   background: linear-gradient(90deg, transparent, rgba(247, 240, 229, 0.22) 18%, rgba(210, 247, 236, 0.94) 48%, rgba(185, 217, 236, 0.42) 72%, transparent);
-  filter: blur(8px);
   height: clamp(22px, 3.6vw, 50px);
   left: -12%;
-  mix-blend-mode: screen;
   position: absolute;
   transform: rotate(-6deg);
   width: 124%;
@@ -631,17 +629,11 @@
 }
 
 .opticalRelay span:nth-child(2) {
-  filter: blur(14px);
-  opacity: 0.62;
-  top: 46%;
-  transform: translateX(5vw) rotate(-6deg);
+  display: none;
 }
 
 .opticalRelay span:nth-child(3) {
-  filter: blur(20px);
-  opacity: 0.4;
-  top: 70%;
-  transform: translateX(-7vw) rotate(-6deg);
+  display: none;
 }
 
 .aboutGrid {
@@ -667,14 +659,13 @@
 
 .aboutCopy {
   align-self: center;
-  filter: blur(var(--profile-blur));
   opacity: var(--profile-opacity);
   transform: translate3d(var(--profile-copy-x), var(--profile-rise), 0);
-  will-change: filter, opacity, transform;
+  will-change: opacity, transform;
 }
 
 .aboutCopy h2 {
-  clip-path: inset(0 0 var(--profile-clip) 0);
+  clip-path: none;
 }
 
 .kicker {

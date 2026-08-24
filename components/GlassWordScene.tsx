@@ -709,6 +709,7 @@ export function GlassWordScene() {
     let fluidEnergy = 0;
     let lastPointerMoveAt = -10_000;
     let scrollProgress = 0;
+    let handoffActive = false;
     let baseScale = 0.75;
     let baseY = 0.42;
     let verticalScale = 0.78;
@@ -1438,17 +1439,41 @@ export function GlassWordScene() {
       };
       canvas.addEventListener("webglcontextlost", handleContextLost, false);
       window.addEventListener("resize", resize, { passive: true });
+      let scrollFrame = 0;
       const updateScroll = () => {
+        scrollFrame = 0;
         if (!hero || reducedMotion.matches) return;
         const rect = hero.getBoundingClientRect();
         scrollProgress = THREE.MathUtils.clamp(-rect.top / Math.max(rect.height * 0.82, 1), 0, 1);
         hero.style.setProperty("--hero-progress", scrollProgress.toFixed(4));
-        activeUntil = performance.now() + 260;
-        wakeAnimation();
+        const nextHandoffActive = scrollProgress > 0.08;
+        if (nextHandoffActive && !handoffActive && renderer && !contextLost) {
+          fluidVisible = false;
+          fluidWasVisible = false;
+          fluidEnergy = 0;
+          glassForce = 0;
+          glassMaterial.uniforms.uCursorForce.value = 0;
+          fluidPass.reset(renderer);
+          renderGlassPasses();
+          root.dataset.fluidState = "idle";
+          root.dataset.postfxPasses = "0";
+        }
+        handoffActive = nextHandoffActive;
+        root.dataset.handoffRender = handoffActive ? "frozen" : "live";
+        if (!handoffActive) {
+          activeUntil = performance.now() + 260;
+          wakeAnimation();
+        }
       };
-      window.addEventListener("scroll", updateScroll, { passive: true });
+      const scheduleScrollUpdate = () => {
+        if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScroll);
+      };
+      window.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
       updateScroll();
-      removeScrollEvent = () => window.removeEventListener("scroll", updateScroll);
+      removeScrollEvent = () => {
+        if (scrollFrame) cancelAnimationFrame(scrollFrame);
+        window.removeEventListener("scroll", scheduleScrollUpdate);
+      };
       removeWebGLEvents = () => {
         window.removeEventListener("resize", resize);
         canvas.removeEventListener("webglcontextlost", handleContextLost);
@@ -1462,7 +1487,7 @@ export function GlassWordScene() {
       const animate = () => {
         frame = 0;
         if (disposed || contextLost || !renderer) return;
-        if (heroVisible) {
+        if (heroVisible && !handoffActive) {
           const elapsed = reducedMotion.matches ? 0 : clock.getElapsedTime();
           const rawDelta = reducedMotion.matches ? 0 : Math.max(0, elapsed - previousElapsed);
           const delta = Math.min(0.05, rawDelta);
@@ -1630,14 +1655,17 @@ export function GlassWordScene() {
         }
 
         const ambientMotionActive = root.dataset.shimmerState === "animated" || root.dataset.stickerState === "falling";
-        if (!reducedMotion.matches && pageVisible && heroVisible && (ambientMotionActive || performance.now() < activeUntil)) {
+        if (
+          !handoffActive && !reducedMotion.matches && pageVisible && heroVisible &&
+          (ambientMotionActive || performance.now() < activeUntil)
+        ) {
           frame = requestAnimationFrame(animate);
         }
       };
       wakeAnimation = () => {
         const ambientMotionActive = root.dataset.shimmerState === "animated" || root.dataset.stickerState === "falling";
         if (
-          !frame && !disposed && !contextLost && pageVisible && heroVisible &&
+          !handoffActive && !frame && !disposed && !contextLost && pageVisible && heroVisible &&
           (ambientMotionActive || performance.now() < activeUntil)
         ) {
           frame = requestAnimationFrame(animate);

@@ -130,13 +130,16 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
         ? Math.min(190, Math.max(150, viewportHeight * 0.22))
         : Math.min(420, Math.max(250, viewportHeight * 0.42));
 
-      root.dataset.handoffPhase = progress < 0.16
+      const nextHandoffPhase = progress < 0.16
         ? "hero"
         : progress < 0.48
           ? "optical-relay"
           : progress < 0.88
             ? "profile-resolve"
             : "profile";
+      if (root.dataset.handoffPhase !== nextHandoffPhase) {
+        root.dataset.handoffPhase = nextHandoffPhase;
+      }
       root.style.setProperty("--handoff-p", progress.toFixed(4));
       root.style.setProperty("--handoff-lift", `${((1 - fieldProgress) * overlap).toFixed(2)}px`);
       root.style.setProperty("--scene-exit", sceneExit.toFixed(4));
@@ -153,8 +156,6 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       root.style.setProperty("--profile-copy-x", `${((1 - copyProgress) * (compact ? 0 : 62)).toFixed(2)}px`);
       root.style.setProperty("--profile-rise", `${((1 - copyProgress) * 34).toFixed(2)}px`);
       root.style.setProperty("--profile-opacity", copyProgress.toFixed(4));
-      root.style.setProperty("--profile-blur", `${((1 - copyProgress) * 2).toFixed(2)}px`);
-      root.style.setProperty("--profile-clip", `${((1 - copyProgress) * 20).toFixed(2)}%`);
     };
 
     const scheduleHandoff = () => {
@@ -178,10 +179,10 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       options={{
         anchors: { offset: -76 },
         autoRaf: true,
-        duration: 1.05,
+        duration: 0.78,
         smoothWheel: true,
         syncTouch: false,
-        wheelMultiplier: 0.92,
+        wheelMultiplier: 1,
       }}
     >
       {children}
