@@ -173,7 +173,7 @@ const GLASS_FRAGMENT_SHADER = `
     float cursorAlong = dot(cursorDelta, cursorDirection) * 0.84;
     float cursorAcross = dot(cursorDelta, cursorTangent) * 1.12;
     float cursorDistance = length(vec2(cursorAlong, cursorAcross));
-    float normalizedCursorDistance = clamp(cursorDistance / 0.17, 0.0, 1.0);
+    float normalizedCursorDistance = clamp(cursorDistance / 0.136, 0.0, 1.0);
     float cursorEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedCursorDistance);
     float bubbleDepth = sqrt(max(
       0.0,
@@ -993,7 +993,7 @@ export function GlassWordScene() {
             fieldCenter.x *= aspect;
             vec2 fieldDelta = centered - fieldCenter;
             float fieldDistance = length(fieldDelta);
-            float fieldMask = 1.0 - smoothstep(0.025, 0.22, fieldDistance);
+            float fieldMask = 1.0 - smoothstep(0.02, 0.176, fieldDistance);
             float fieldAngle = fieldMask * 0.10 + sin(uTime * 0.05) * 0.018;
             mat2 fieldRotation = mat2(
               cos(fieldAngle), -sin(fieldAngle),
@@ -1028,11 +1028,11 @@ export function GlassWordScene() {
               float d = length(delta);
               float age = uSplatAges[i];
               float ring = sin(d * 44.0 - age * 5.8);
-              fluid += ring * exp(-d * 12.5) * exp(-age * 1.45);
+              fluid += ring * exp(-d * 15.625) * exp(-age * 1.45);
             }
             vec2 pointerDelta = uv - uPointer;
             pointerDelta.x *= aspect;
-            float cursorHalo = exp(-dot(pointerDelta, pointerDelta) * 92.0);
+            float cursorHalo = exp(-dot(pointerDelta, pointerDelta) * 143.75);
             color += vec3(0.16, 0.24, 0.28) * fluid * 0.01;
             color += vec3(1.0, 0.97, 0.9) * cursorHalo * 0.014;
 

@@ -197,8 +197,8 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     float bubbleAlong = dot(metricPointerDelta, metricFlow) * 0.84;
     float bubbleAcross = dot(metricPointerDelta, metricTangent) * 1.12;
     float pointerDistance = length(vec2(bubbleAlong, bubbleAcross));
-    float normalizedBubbleDistance = clamp(pointerDistance / 0.166, 0.0, 1.0);
-    float broadEnvelope = 1.0 - smoothstep(0.10, 0.44, length(metricPointerDelta));
+    float normalizedBubbleDistance = clamp(pointerDistance / 0.1328, 0.0, 1.0);
+    float broadEnvelope = 1.0 - smoothstep(0.08, 0.352, length(metricPointerDelta));
     vec2 radialDirection = normalize(metricPointerDelta + vec2(0.00001));
     radialDirection.x /= max(uAspect, 0.0001);
     float pressureEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedBubbleDistance);
@@ -220,7 +220,7 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
       * pressureDepth
       * bubbleWobble
       * (0.042 + motionForce * 0.042);
-    float broadRing = exp(-pow((length(metricPointerDelta) - 0.245) / 0.112, 2.0));
+    float broadRing = exp(-pow((length(metricPointerDelta) - 0.196) / 0.0896, 2.0));
     float broadResponse = clamp(
       broadEnvelope * max(wake * 1.04, motionForce * 0.72),
       0.0,
@@ -555,8 +555,8 @@ export class HeroFluidPass {
     uAspect: { value: 1 },
     uFrameTime: { value: 0 },
     uPointerOn: { value: 0 },
-    uBrushRadius: { value: 0.13 },
-    uBroadRadius: { value: 0.42 },
+    uBrushRadius: { value: 0.104 },
+    uBroadRadius: { value: 0.336 },
     uMotionDrag: { value: 4.1 },
     uWakeDrag: { value: 0.72 },
     uCrestDrag: { value: 6.4 },
