@@ -30,14 +30,14 @@ const GLASS_THEME_SETTINGS = {
     tintThicknessMinAlpha: 1,
   },
   light: {
-    brightness: 0.78,
-    contrast: 0.9,
-    diffuseness: 0.1,
-    fresnelPower: 1,
-    fresnelStrength: 0.24,
-    shininess: 120,
-    tintThicknessMaxAlpha: 0.92,
-    tintThicknessMinAlpha: 1,
+    brightness: 0.74,
+    contrast: 1.04,
+    diffuseness: 0.035,
+    fresnelPower: 1.45,
+    fresnelStrength: 0.34,
+    shininess: 156,
+    tintThicknessMaxAlpha: 0.72,
+    tintThicknessMinAlpha: 0.98,
   },
 } as const;
 const STICKER_PATHS = [
@@ -155,16 +155,16 @@ const GLASS_FRAGMENT_SHADER = `
     vec4 flowUp = texture2D(uMotionField, uv + vec2(0.0, uMotionTexelStep.y));
     vec2 fieldMotion = decodeFieldMotion(flowCenter.xy);
     vec2 fieldGradient = vec2(flowRight.z - flowLeft.z, flowUp.z - flowDown.z);
-    float fieldResponse = smoothstep(0.008, 0.48, flowCenter.z) * uOpticalCoupling;
+    float fieldResponse = smoothstep(0.06, 0.56, flowCenter.z) * uOpticalCoupling;
     vec2 fieldUvMotion = vec2(fieldMotion.x / screenAspect, fieldMotion.y);
     vec2 fieldUvNormal = vec2(fieldGradient.x / screenAspect, fieldGradient.y);
     normal = normalize(normal + vec3(
-      (fieldUvNormal * 1.35 + fieldUvMotion * 0.34) * fieldResponse,
-      flowCenter.w * fieldResponse * 0.16
+      (fieldUvNormal * 1.18 + fieldUvMotion * 0.28) * fieldResponse,
+      flowCenter.w * fieldResponse * 0.14
     ));
     rippleOffset += (
-      fieldUvMotion * 0.052
-      + fieldUvNormal * 0.024
+      fieldUvMotion * 0.038
+      + fieldUvNormal * 0.018
     ) * fieldResponse;
     rippleHighlight += fieldResponse * (length(fieldGradient) * 0.52 + flowCenter.w * 0.12);
 
@@ -286,6 +286,12 @@ const GLASS_FRAGMENT_SHADER = `
     color += specularLight * uSpecularStrength;
     float fresnel = glassFresnel(eyeDirection, normal, uFresnelPower);
     float sideMask = smoothstep(-0.5, 0.5, dot(normal, normalize(uFresnelSideDir)));
+    vec3 rimTransmission = mix(
+      vec3(0.48, 0.66, 0.84),
+      vec3(0.68, 0.84, 0.98),
+      sideMask
+    );
+    color = mix(color, color * rimTransmission, fresnel * 0.46);
     color += fresnel * sideMask * uFresnelStrength;
     color += hoverMask * (0.012 + fresnel * 0.035) * vec3(0.72, 0.9, 1.0);
 
@@ -296,8 +302,6 @@ const GLASS_FRAGMENT_SHADER = `
     color += rippleHighlight * vec3(0.72, 0.9, 1.0);
 
     gl_FragColor = vec4(max(color, 0.0), 1.0);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
   }
 `;
 
@@ -909,6 +913,7 @@ export function GlassWordScene() {
       camera.position.set(0, 0.08, 7.7);
       const backgroundScene = new THREE.Scene();
       const glassScene = new THREE.Scene();
+      const stickerScene = new THREE.Scene();
       const copyScene = new THREE.Scene();
       const copyCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const raycaster = new THREE.Raycaster();
@@ -1112,17 +1117,17 @@ export function GlassWordScene() {
           uTintAccent: { value: new THREE.Color() },
           uTintBase: { value: new THREE.Color() },
           uBrightness: { value: GLASS_THEME_SETTINGS.light.brightness },
-          uChromaticAberration: { value: 0.14 },
+          uChromaticAberration: { value: 0.09 },
           uContrast: { value: GLASS_THEME_SETTINGS.light.contrast },
           uDiffuseness: { value: GLASS_THEME_SETTINGS.light.diffuseness },
           uFresnelPower: { value: GLASS_THEME_SETTINGS.light.fresnelPower },
           uFresnelSideDir: { value: new THREE.Vector3(-1, 1, -1) },
           uFresnelStrength: { value: GLASS_THEME_SETTINGS.light.fresnelStrength },
           uGamma: { value: 1 },
-          uRefractPower: { value: 0.72 },
+          uRefractPower: { value: 0.54 },
           uSaturation: { value: 1.2 },
           uShininess: { value: GLASS_THEME_SETTINGS.light.shininess },
-          uSpecularStrength: { value: 1.2 },
+          uSpecularStrength: { value: 0.94 },
           uTintMix: { value: 1 },
           uTintThicknessMaxAlpha: { value: GLASS_THEME_SETTINGS.light.tintThicknessMaxAlpha },
           uTintThicknessMinAlpha: { value: GLASS_THEME_SETTINGS.light.tintThicknessMinAlpha },
@@ -1223,13 +1228,11 @@ export function GlassWordScene() {
           varying vec2 vUv;
           void main() {
             gl_FragColor = texture2D(uScene, vUv);
-            #include <tonemapping_fragment>
-            #include <colorspace_fragment>
           }
         `,
         depthTest: false,
         depthWrite: false,
-        toneMapped: true,
+        toneMapped: false,
       });
       const copyGeometry = new THREE.PlaneGeometry(2, 2);
       const copyMesh = new THREE.Mesh(copyGeometry, copyMaterial);
@@ -1247,10 +1250,10 @@ export function GlassWordScene() {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrow ? 1.25 : 1.5));
         renderer.setSize(width, height, false);
         renderer.getDrawingBufferSize(drawingBufferSize);
-        const targetScale = narrow ? 0.64 : 0.74;
+        const targetScale = narrow ? 0.76 : 1;
         const unboundedWidth = Math.max(1, Math.round(drawingBufferSize.x * targetScale));
         const unboundedHeight = Math.max(1, Math.round(drawingBufferSize.y * targetScale));
-        const pixelBudget = narrow ? 850_000 : 1_900_000;
+        const pixelBudget = narrow ? 1_100_000 : 3_400_000;
         const budgetScale = Math.min(
           1,
           Math.sqrt(pixelBudget / Math.max(unboundedWidth * unboundedHeight, 1)),
@@ -1258,6 +1261,9 @@ export function GlassWordScene() {
         const targetWidth = Math.max(1, Math.round(unboundedWidth * budgetScale));
         const targetHeight = Math.max(1, Math.round(unboundedHeight * budgetScale));
         sceneTarget.setSize(targetWidth, targetHeight);
+        compositeTarget.samples = narrow
+          ? 0
+          : Math.min(2, renderer.capabilities.maxSamples);
         compositeTarget.setSize(targetWidth, targetHeight);
         fluidTarget.setSize(targetWidth, targetHeight);
         glassResolution.set(targetWidth, targetHeight);
@@ -1307,7 +1313,7 @@ export function GlassWordScene() {
             return;
           }
           stickerField = field;
-          backgroundScene.add(field.mesh);
+          stickerScene.add(field.mesh);
           field.resize(camera);
           disposables.push(field);
           root.dataset.stickerState = "falling";
@@ -1392,6 +1398,8 @@ export function GlassWordScene() {
         );
         flarePass.setTailColor(glassMaterial.uniforms.uTintAccent.value);
         flarePass.render(renderer, finalTexture, flareVisible, fluidVisible);
+        renderer.clearDepth();
+        renderer.render(stickerScene, camera);
       };
 
       const gl = renderer.getContext();

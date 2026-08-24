@@ -612,7 +612,11 @@ export class HeroFluidPass {
 
   resize(renderWidth: number, renderHeight: number) {
     const aspect = renderWidth / Math.max(renderHeight, 1);
-    const fieldHeight = 168;
+    const fieldHeight = THREE.MathUtils.clamp(
+      Math.round(renderHeight * 0.2),
+      168,
+      240,
+    );
     const fieldWidth = Math.max(96, Math.round(fieldHeight * aspect));
     this.resolution.set(renderWidth, renderHeight);
     this.fieldSize.set(fieldWidth, fieldHeight);
@@ -732,12 +736,12 @@ export class HeroFlarePass {
     uResolution: { value: this.resolution },
     uFieldSize: { value: this.fieldSize },
     uTailColor: { value: new THREE.Color(0x009dff) },
-    uIntensity: { value: 0.82 },
-    uThreshold: { value: 0.968 },
-    uStreakScale: { value: 8 },
-    uHotspotPower: { value: 12 },
-    uGate: { value: 0.68 },
-    uHaloIntensity: { value: 0.76 },
+    uIntensity: { value: 0.66 },
+    uThreshold: { value: 0.976 },
+    uStreakScale: { value: 6.5 },
+    uHotspotPower: { value: 14 },
+    uGate: { value: 0.74 },
+    uHaloIntensity: { value: 0.52 },
     uMotionCoupling: { value: 0 },
   });
   private readonly compositeMaterial = createFullscreenMaterial(FINAL_COMPOSITE_FRAGMENT_SHADER, {
