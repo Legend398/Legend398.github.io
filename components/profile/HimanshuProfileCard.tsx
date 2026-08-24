@@ -292,7 +292,7 @@ export default function HimanshuProfileCard({
                 )}
               </span>
               <span className={styles.userCopy}>
-                {handle ? <strong title={`@${handle}`}>@{handle}</strong> : null}
+                <strong title={`@${handle}`}>@{handle}</strong>
                 <small title={status}>{status}</small>
               </span>
             </div>
