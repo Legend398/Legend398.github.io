@@ -6,7 +6,10 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { SCULPTED_WORD_PATH } from "@/components/SculptedWordPath";
+import { createCleanroomHelloGeometry } from "@/components/hero/CleanroomHelloGeometry";
 import { HeroFlarePass, HeroFluidPass } from "@/components/hero/HeroPostProcessing";
+
+type HelloModelSource = "generated-path" | "downloaded-gltf" | "cleanroom-v2";
 
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
@@ -833,7 +836,7 @@ export function GlassWordScene() {
       wakeAnimation = () => {};
     };
 
-    const markWebGLReady = (modelSource: "generated-path" | "downloaded-gltf") => {
+    const markWebGLReady = (modelSource: HelloModelSource) => {
       if (disposed) return;
       clearReadinessWatchdog();
       root.dataset.modelSource = modelSource;
@@ -1161,7 +1164,14 @@ export function GlassWordScene() {
       };
       syncThemeColors();
 
-      let activeGeometry = createSculptedGeometry();
+      const helloVariant = new URLSearchParams(window.location.search).get("hello");
+      const useCleanroomPreview = helloVariant === "cleanroom-v2";
+      root.dataset.helloVariant = useCleanroomPreview ? "cleanroom-v2" : "current";
+
+      let activeGeometry = useCleanroomPreview
+        ? createCleanroomHelloGeometry()
+        : createSculptedGeometry();
+      if (useCleanroomPreview) root.dataset.modelSource = "cleanroom-v2";
       const updateLocalYRange = (geometry: THREE.BufferGeometry) => {
         geometry.computeBoundingBox();
         if (!geometry.boundingBox) return;
@@ -1288,33 +1298,35 @@ export function GlassWordScene() {
           root.dataset.stickerState = "failed";
         });
 
-      const modelLoader = new GLTFLoader();
-      modelLoader.load(
-        "/model/hello.gltf",
-        (gltf) => {
-          if (disposed) return;
-          try {
-            const downloadedGeometry = createDownloadedHelloGeometry(gltf.scene);
-            const previousGeometry = activeGeometry;
-            activeGeometry = downloadedGeometry;
-            sculpture.geometry = downloadedGeometry;
-            previousGeometry.dispose();
-            updateLocalYRange(downloadedGeometry);
-            markWebGLReady("downloaded-gltf");
-            resize();
-            activeUntil = performance.now() + 900;
-            wakeAnimation();
-          } catch {
+      if (!useCleanroomPreview) {
+        const modelLoader = new GLTFLoader();
+        modelLoader.load(
+          "/model/hello.gltf",
+          (gltf) => {
+            if (disposed) return;
+            try {
+              const downloadedGeometry = createDownloadedHelloGeometry(gltf.scene);
+              const previousGeometry = activeGeometry;
+              activeGeometry = downloadedGeometry;
+              sculpture.geometry = downloadedGeometry;
+              previousGeometry.dispose();
+              updateLocalYRange(downloadedGeometry);
+              markWebGLReady("downloaded-gltf");
+              resize();
+              activeUntil = performance.now() + 900;
+              wakeAnimation();
+            } catch {
+              markWebGLReady("generated-path");
+              wakeAnimation();
+            }
+          },
+          undefined,
+          () => {
             markWebGLReady("generated-path");
             wakeAnimation();
-          }
-        },
-        undefined,
-        () => {
-          markWebGLReady("generated-path");
-          wakeAnimation();
-        },
-      );
+          },
+        );
+      }
 
       const renderGlassPasses = () => {
         if (!renderer) return;
@@ -1383,9 +1395,10 @@ export function GlassWordScene() {
         renderer.debug.onShaderError = previousShaderErrorHandler;
         renderer.setRenderTarget(null);
       }
+      const initialModelSource = root.dataset.modelSource;
       markWebGLReady(
-        root.dataset.modelSource === "downloaded-gltf"
-          ? "downloaded-gltf"
+        initialModelSource === "downloaded-gltf" || initialModelSource === "cleanroom-v2"
+          ? initialModelSource
           : "generated-path",
       );
 
@@ -1659,6 +1672,7 @@ export function GlassWordScene() {
       data-glass-tint-accent="loading"
       data-glass-tint-base="loading"
       data-glass-word="hello"
+      data-hello-variant="loading"
       data-light-angle="0"
       data-light-x="4"
       data-light-y="9"

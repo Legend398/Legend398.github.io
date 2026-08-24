@@ -304,6 +304,18 @@ test("hero becomes ready while the downloaded GLTF is still pending", async ({ p
   }
 });
 
+test("original hello preview remains separate from the current model", async ({ page }) => {
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/?hello=cleanroom-v2");
+
+  const glass = page.locator('[data-v8-hero] [data-glass-stage]');
+  await expect(glass).toHaveAttribute("data-hello-variant", "cleanroom-v2");
+  await expect(glass).toHaveAttribute("data-model-source", "cleanroom-v2");
+  await expect(glass).toHaveAttribute("data-renderer", "webgl");
+  await expect(glass).toHaveAttribute("data-render-state", "ready");
+});
+
 test("hero shows its glass fallback without JavaScript or a loading screen", async ({ browser }) => {
   const context = await browser.newContext({
     baseURL: "http://127.0.0.1:3200",
