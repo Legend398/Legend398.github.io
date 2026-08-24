@@ -802,7 +802,16 @@ export function GlassWordScene() {
     window.addEventListener("blur", resetPointer);
     document.documentElement.addEventListener("pointerleave", resetPointer, { passive: true });
 
+    let readinessWatchdog = 0;
+    const clearReadinessWatchdog = () => {
+      if (readinessWatchdog) {
+        window.clearTimeout(readinessWatchdog);
+        readinessWatchdog = 0;
+      }
+    };
+
     const setFallback = () => {
+      clearReadinessWatchdog();
       root.dataset.renderer = "fallback";
       root.dataset.sceneMode = "fallback";
       root.dataset.renderState = "ready";
@@ -826,6 +835,7 @@ export function GlassWordScene() {
 
     const markWebGLReady = (modelSource: "generated-path" | "downloaded-gltf") => {
       if (disposed) return;
+      clearReadinessWatchdog();
       root.dataset.modelSource = modelSource;
       root.dataset.renderState = "ready";
       if (!root.classList.contains("isReady")) {
@@ -835,10 +845,17 @@ export function GlassWordScene() {
       }
     };
 
+    readinessWatchdog = window.setTimeout(() => {
+      if (!disposed && root.dataset.renderState !== "ready") {
+        startFallbackAnimation();
+      }
+    }, 8_000);
+
     if (reducedMotion.matches) {
       startFallbackAnimation();
       return () => {
         disposed = true;
+        clearReadinessWatchdog();
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1591,6 +1608,7 @@ export function GlassWordScene() {
 
       return () => {
         disposed = true;
+        clearReadinessWatchdog();
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1608,6 +1626,7 @@ export function GlassWordScene() {
       startFallbackAnimation();
       return () => {
         disposed = true;
+        clearReadinessWatchdog();
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1690,7 +1709,6 @@ export function GlassWordScene() {
             </g>
           </svg>
       </div>
-      <div className="sceneLoader"><i /></div>
     </div>
   );
 }

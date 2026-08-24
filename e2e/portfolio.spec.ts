@@ -304,6 +304,26 @@ test("hero becomes ready while the downloaded GLTF is still pending", async ({ p
   }
 });
 
+test("hero shows its glass fallback without JavaScript or a loading screen", async ({ browser }) => {
+  const context = await browser.newContext({
+    baseURL: "http://127.0.0.1:3200",
+    javaScriptEnabled: false,
+    viewport: { width: 1_440, height: 900 },
+  });
+  const page = await context.newPage();
+
+  try {
+    await page.goto("/");
+    const glass = page.locator('[data-v8-hero] [data-glass-stage]');
+    const fallback = glass.locator("[data-glass-fallback]");
+
+    await expect(fallback).toBeVisible();
+    await expect(glass.locator(".sceneLoader")).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
 test("v8 hero keeps its sculpted glass render ready and sharp while idle", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });

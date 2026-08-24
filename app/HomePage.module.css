@@ -267,40 +267,9 @@
   opacity: 0.48;
 }
 
-.studioHero :global(.glassScene[data-renderer="webgl"] .glassFallback) {
+.studioHero :global(.glassScene[data-renderer="webgl"].isReady .glassFallback) {
   opacity: 0;
   visibility: hidden;
-}
-
-.studioHero :global(.sceneLoader) {
-  background: rgba(8, 13, 16, 0.12);
-  border-radius: 999px;
-  height: 5px;
-  left: 50%;
-  overflow: hidden;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transition: opacity 350ms ease;
-  width: 132px;
-  z-index: 30;
-}
-
-.studioHero :global(.sceneLoader i) {
-  animation: studioKineticLoad 950ms cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-  background: #0a6b8f;
-  display: block;
-  height: 100%;
-  width: 46%;
-}
-
-.studioHero :global(.glassScene.isReady .sceneLoader) {
-  display: none;
-}
-
-@keyframes studioKineticLoad {
-  from { transform: translateX(-18%); }
-  to { transform: translateX(135%); }
 }
 
 .sectionFrame {
@@ -1465,10 +1434,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studioHero :global(.sceneLoader) {
-    display: none;
-  }
-
   .studioHero :global(.glassFallback) {
     transform: translate(-50%, -50%) rotate(-4deg);
   }
