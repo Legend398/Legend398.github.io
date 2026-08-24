@@ -136,7 +136,7 @@
   padding: 106px clamp(22px, 4vw, 60px) 0;
   pointer-events: none;
   position: relative;
-  opacity: calc(1 - var(--handoff-p) * 1.35);
+  opacity: calc(1 - var(--handoff-p) * 1.65);
   transform: translateY(calc(var(--hero-progress) * -22px + var(--handoff-p) * -18px));
   transition: opacity 80ms linear;
   width: 100%;
@@ -171,7 +171,7 @@
   bottom: clamp(104px, 12vh, 122px);
   left: clamp(22px, 4vw, 60px);
   position: absolute;
-  opacity: calc(1 - var(--handoff-p) * 1.1);
+  opacity: calc(1 - var(--handoff-p) * 1.5);
   transform: translate3d(calc(var(--handoff-p) * -5vw), calc(var(--hero-progress) * -52px + var(--handoff-p) * -36px), 0);
   width: min(830px, 66vw);
   z-index: 24;
@@ -212,7 +212,7 @@
   left: clamp(22px, 4vw, 60px);
   position: absolute;
   right: clamp(22px, 4vw, 60px);
-  opacity: calc(1 - var(--handoff-p) * 1.4);
+  opacity: calc(1 - var(--handoff-p) * 1.65);
   transform: translateY(calc(var(--handoff-p) * -18px));
   z-index: 24;
 }

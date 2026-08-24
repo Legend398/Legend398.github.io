@@ -118,14 +118,14 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       const viewportHeight = Math.max(window.innerHeight, 1);
       const heroBottom = hero.getBoundingClientRect().bottom;
       const progress = clamp01((viewportHeight * 0.92 - heroBottom) / (viewportHeight * 0.9));
-      const sceneExit = smoothstep(0.12, 0.7, progress);
-      const sceneFade = smoothstep(0.48, 0.96, progress);
-      const fieldProgress = smoothstep(0.16, 0.8, progress);
+      const sceneExit = smoothstep(0.08, 0.58, progress);
+      const sceneFade = smoothstep(0.3, 0.72, progress);
+      const fieldProgress = smoothstep(0.1, 0.62, progress);
       const compact = window.innerWidth <= 760;
-      const cardProgress = easeOutCubic(clamp01((progress - (compact ? 0.24 : 0.28)) / (compact ? 0.42 : 0.44)));
-      const copyProgress = easeOutCubic(clamp01((progress - 0.42) / 0.3));
-      const relayIn = smoothstep(0.25, 0.43, progress);
-      const relayOut = 1 - smoothstep(0.7, 0.9, progress);
+      const cardProgress = easeOutCubic(clamp01((progress - (compact ? 0.18 : 0.2)) / (compact ? 0.34 : 0.36)));
+      const copyProgress = easeOutCubic(clamp01((progress - 0.3) / 0.28));
+      const relayIn = smoothstep(0.18, 0.32, progress);
+      const relayOut = 1 - smoothstep(0.58, 0.76, progress);
       const overlap = compact
         ? Math.min(190, Math.max(150, viewportHeight * 0.22))
         : Math.min(420, Math.max(250, viewportHeight * 0.42));
@@ -143,8 +143,8 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       root.style.setProperty("--handoff-p", progress.toFixed(4));
       root.style.setProperty("--handoff-lift", `${((1 - fieldProgress) * overlap).toFixed(2)}px`);
       root.style.setProperty("--scene-exit", sceneExit.toFixed(4));
-      root.style.setProperty("--scene-opacity", (1 - sceneFade * 0.96).toFixed(4));
-      root.style.setProperty("--hero-wash-opacity", (fieldProgress * 0.5).toFixed(4));
+      root.style.setProperty("--scene-opacity", (1 - sceneFade).toFixed(4));
+      root.style.setProperty("--hero-wash-opacity", (fieldProgress * 0.68).toFixed(4));
       root.style.setProperty("--relay-opacity", (relayIn * relayOut).toFixed(4));
       root.style.setProperty("--relay-travel", `${((progress - 0.25) * -150).toFixed(2)}px`);
       root.style.setProperty("--about-grid-opacity", (0.1 + fieldProgress * 0.18).toFixed(4));
