@@ -412,9 +412,9 @@ test("hero cursor field refracts while the flare follows movement in real time",
   const scene = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(scene).toHaveAttribute(
     "data-render-layers",
-    "background+stickers|glass+ripples|motion|surface|refraction+dispersion|caustics|composite",
+    "background+stickers|multiscale-motion|glass+ripples+flow|surface|refraction+dispersion|temporal-afterglow|caustics|composite",
   );
-  await expect(scene).toHaveAttribute("data-postfx-profile", "five-pass-optical");
+  await expect(scene).toHaveAttribute("data-postfx-profile", "multiscale-temporal-optical");
   await expect(scene).toHaveAttribute("data-postfx-storage", "rgba8-packed");
   await expect(scene).toHaveAttribute("data-deformation-profile", "gel-bubble");
   await expect(scene).toHaveAttribute("data-fluid-state", "idle");
@@ -426,7 +426,7 @@ test("hero cursor field refracts while the flare follows movement in real time",
   const captureCanvas = () => page.screenshot({ clip: canvasBox! });
   const hitPoint = await movePointerToGlassWord(page, scene);
   await page.mouse.move(8, 8);
-  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 5_000 });
   await expect.poll(async () => Number(await scene.getAttribute("data-active-ripples")), {
     timeout: 3_000,
   }).toBe(0);
@@ -460,8 +460,9 @@ test("hero cursor field refracts while the flare follows movement in real time",
     ].join("|");
   }, hitPoint);
   expect(activeStates).toBe("active|active");
-  await expect(scene).toHaveAttribute("data-postfx-passes", "5");
+  await expect(scene).toHaveAttribute("data-postfx-passes", "6");
   await expect.poll(async () => Number(await scene.getAttribute("data-cursor-force"))).toBeGreaterThan(0.12);
+  await expect.poll(async () => Number(await scene.getAttribute("data-field-energy"))).toBeGreaterThan(0.2);
   await expect(scene).toHaveAttribute("data-camera-parallax-x", "0.0000");
   await expect(scene).toHaveAttribute("data-camera-parallax-y", "0.0000");
   const movingPixels = await captureCanvas();
@@ -470,11 +471,60 @@ test("hero cursor field refracts while the flare follows movement in real time",
     delete (element as HTMLElement).dataset.qaHoldFluid;
     delete (element as HTMLElement).dataset.qaHoldBubble;
   });
-  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 5_000 });
   await expect(scene).toHaveAttribute("data-flare-state", "active");
   const settledPixels = await captureCanvas();
   expect(movingPixels.equals(idlePixels)).toBe(false);
   expect(movingPixels.equals(settledPixels)).toBe(false);
+});
+
+test("multiscale cursor field reaches the wider scene and leaves a smooth afterglow", async ({ page }) => {
+  await page.setViewportSize({ width: 1_200, height: 760 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
+  const canvas = scene.locator("canvas");
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  if (!canvasBox) return;
+
+  await page.mouse.move(8, 8);
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 5_000 });
+  await scene.evaluate((element) => {
+    const target = element as HTMLElement;
+    target.dataset.qaFreezeAmbient = "true";
+    target.dataset.qaHideStickers = "true";
+    target.dataset.qaPostFxOnly = "true";
+  });
+  await page.waitForTimeout(160);
+  const idleFrame = await page.screenshot({ clip: canvasBox });
+
+  const start = {
+    x: canvasBox.x + canvasBox.width * 0.31,
+    y: canvasBox.y + canvasBox.height * 0.48,
+  };
+  const end = {
+    x: canvasBox.x + canvasBox.width * 0.71,
+    y: canvasBox.y + canvasBox.height * 0.55,
+  };
+  await page.mouse.move(start.x, start.y, { steps: 4 });
+  await page.mouse.move(end.x, end.y, { steps: 24 });
+  await expect(scene).toHaveAttribute("data-fluid-state", "active");
+  const liveFrame = await page.screenshot({ clip: canvasBox });
+  await page.waitForTimeout(350);
+  const afterglowFrame = await page.screenshot({ clip: canvasBox });
+  await page.waitForTimeout(900);
+  const tailFrame = await page.screenshot({ clip: canvasBox });
+
+  const liveDifference = await measureImageDifference(page, idleFrame, liveFrame);
+  const afterglowDifference = await measureImageDifference(page, idleFrame, afterglowFrame);
+  const tailDifference = await measureImageDifference(page, idleFrame, tailFrame);
+  expect(liveDifference.changedRatio).toBeGreaterThan(0.045);
+  expect(afterglowDifference.changedRatio).toBeGreaterThan(0.02);
+  expect(afterglowDifference.meanDelta).toBeGreaterThan(0.6);
+  expect(tailDifference.changedRatio).toBeGreaterThan(0.008);
+  expect(afterglowDifference.meanDelta).toBeLessThan(liveDifference.meanDelta * 1.15);
 });
 
 test("gel bubble visibly bends the hello word without changing a distant control region", async ({ page }) => {
@@ -505,7 +555,7 @@ test("gel bubble visibly bends the hello word without changing a distant control
   };
 
   await page.mouse.move(8, 8);
-  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 5_000 });
   await scene.evaluate((element) => {
     const target = element as HTMLElement;
     target.dataset.qaFreezeAmbient = "true";

@@ -71,12 +71,15 @@ const GLASS_FRAGMENT_SHADER = `
   precision highp float;
 
   uniform sampler2D uScene;
+  uniform sampler2D uMotionField;
   uniform vec2 uResolution;
+  uniform vec2 uMotionTexelStep;
   uniform vec3 uLight;
   uniform vec2 uHoverUv;
   uniform float uHoverStrength;
   uniform vec2 uCursorVelocity;
   uniform float uCursorForce;
+  uniform float uOpticalCoupling;
   uniform vec2 uRippleUv[${RIPPLE_COUNT}];
   uniform float uRippleAges[${RIPPLE_COUNT}];
   uniform vec2 uLocalYRange;
@@ -108,6 +111,10 @@ const GLASS_FRAGMENT_SHADER = `
     return fract(sin(dot(value, vec2(12.9898, 78.233))) * 43758.5453);
   }
 
+  vec2 decodeFieldMotion(vec2 packedMotion) {
+    return packedMotion * 1.1 - 0.55;
+  }
+
   vec3 adjustSaturation(vec3 rgb, float amount) {
     vec3 luminanceWeights = vec3(0.2125, 0.7154, 0.0721);
     vec3 intensity = vec3(dot(rgb, luminanceWeights));
@@ -136,6 +143,27 @@ const GLASS_FRAGMENT_SHADER = `
     vec2 rippleOffset = vec2(0.0);
     float rippleHighlight = 0.0;
     float screenAspect = uResolution.x / max(uResolution.y, 1.0);
+
+    vec4 flowCenter = texture2D(uMotionField, uv);
+    vec4 flowLeft = texture2D(uMotionField, uv - vec2(uMotionTexelStep.x, 0.0));
+    vec4 flowRight = texture2D(uMotionField, uv + vec2(uMotionTexelStep.x, 0.0));
+    vec4 flowDown = texture2D(uMotionField, uv - vec2(0.0, uMotionTexelStep.y));
+    vec4 flowUp = texture2D(uMotionField, uv + vec2(0.0, uMotionTexelStep.y));
+    vec2 fieldMotion = decodeFieldMotion(flowCenter.xy);
+    vec2 fieldGradient = vec2(flowRight.z - flowLeft.z, flowUp.z - flowDown.z);
+    float fieldResponse = smoothstep(0.008, 0.48, flowCenter.z) * uOpticalCoupling;
+    vec2 fieldUvMotion = vec2(fieldMotion.x / screenAspect, fieldMotion.y);
+    vec2 fieldUvNormal = vec2(fieldGradient.x / screenAspect, fieldGradient.y);
+    normal = normalize(normal + vec3(
+      (fieldUvNormal * 1.35 + fieldUvMotion * 0.34) * fieldResponse,
+      flowCenter.w * fieldResponse * 0.16
+    ));
+    rippleOffset += (
+      fieldUvMotion * 0.052
+      + fieldUvNormal * 0.024
+    ) * fieldResponse;
+    rippleHighlight += fieldResponse * (length(fieldGradient) * 0.52 + flowCenter.w * 0.12);
+
     vec2 cursorDelta = uv - uHoverUv;
     cursorDelta.x *= screenAspect;
     vec2 cursorDirection = normalize(
@@ -145,8 +173,8 @@ const GLASS_FRAGMENT_SHADER = `
     float cursorAlong = dot(cursorDelta, cursorDirection) * 0.84;
     float cursorAcross = dot(cursorDelta, cursorTangent) * 1.12;
     float cursorDistance = length(vec2(cursorAlong, cursorAcross));
-    float normalizedCursorDistance = clamp(cursorDistance / 0.088, 0.0, 1.0);
-    float cursorEnvelope = 1.0 - smoothstep(0.84, 1.0, normalizedCursorDistance);
+    float normalizedCursorDistance = clamp(cursorDistance / 0.17, 0.0, 1.0);
+    float cursorEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedCursorDistance);
     float bubbleDepth = sqrt(max(
       0.0,
       1.0 - normalizedCursorDistance * normalizedCursorDistance
@@ -160,12 +188,12 @@ const GLASS_FRAGMENT_SHADER = `
     ) * 0.08;
     float bubbleCore = cursorEnvelope * bubbleDepth * uCursorForce;
     normal = normalize(normal + vec3(
-      cursorRadial * bubbleShell * cursorWobble * uCursorForce * 1.15,
-      bubbleCore * 0.24
+      cursorRadial * bubbleShell * cursorWobble * uCursorForce * 1.34,
+      bubbleCore * 0.31
     ));
     rippleOffset += (
-      cursorRadial * bubbleShell * cursorWobble * 0.052
-      + cursorFlowUv * bubbleShell * 0.016
+      cursorRadial * bubbleShell * cursorWobble * 0.058
+      + cursorFlowUv * bubbleShell * 0.021
     ) * uCursorForce;
     float bubbleRim = smoothstep(0.48, 0.92, normalizedCursorDistance)
       * (1.0 - smoothstep(0.90, 1.0, normalizedCursorDistance));
@@ -666,6 +694,7 @@ export function GlassWordScene() {
     let hoverStrength = 0;
     let glassForce = 0;
     const glassVelocity = new THREE.Vector2(1, 0);
+    let fluidEnergy = 0;
     let lastPointerMoveAt = -10_000;
     let scrollProgress = 0;
     let baseScale = 0.75;
@@ -687,7 +716,7 @@ export function GlassWordScene() {
         root.style.setProperty("--pointer-x", "0");
         root.style.setProperty("--pointer-y", "0");
       }
-      activeUntil = performance.now() + 900;
+      activeUntil = performance.now() + 3000;
       wakeAnimation();
     };
 
@@ -735,7 +764,7 @@ export function GlassWordScene() {
       pointerNdc.set(nextUv.x * 2 - 1, nextUv.y * 2 - 1);
       targetPointer.copy(pointerNdc);
       pointerDirty = true;
-      activeUntil = performance.now() + 2300;
+      activeUntil = performance.now() + 3600;
 
       if (
         root.dataset.qaFreezeAmbient !== "true"
@@ -765,7 +794,7 @@ export function GlassWordScene() {
       forceSplash = true;
       burstRequested = true;
       pointerDirty = true;
-      activeUntil = performance.now() + 1100;
+      activeUntil = performance.now() + 3000;
       wakeAnimation();
     };
     window.addEventListener("pointermove", updatePointer, { passive: true });
@@ -1026,12 +1055,15 @@ export function GlassWordScene() {
       const glassMaterial = new THREE.ShaderMaterial({
         uniforms: {
           uScene: { value: sceneTarget.texture },
+          uMotionField: { value: fluidPass.getMotionTexture() },
           uResolution: { value: glassResolution },
+          uMotionTexelStep: { value: new THREE.Vector2(1, 1) },
           uLight: { value: pointerLightWorld },
           uHoverUv: { value: pointerUv },
           uHoverStrength: { value: 0 },
           uCursorVelocity: { value: glassVelocity },
           uCursorForce: { value: 0 },
+          uOpticalCoupling: { value: 0 },
           uRippleUv: { value: rippleUv },
           uRippleAges: { value: rippleAges },
           uLocalYRange: { value: new THREE.Vector2(0, 1) },
@@ -1184,11 +1216,16 @@ export function GlassWordScene() {
         glassResolution.set(targetWidth, targetHeight);
         backgroundResolution.set(targetWidth, targetHeight);
         fluidPass.resize(targetWidth, targetHeight);
+        const motionFieldSize = fluidPass.getFieldSize();
+        glassMaterial.uniforms.uMotionTexelStep.value.set(
+          1 / Math.max(motionFieldSize.x, 1),
+          1 / Math.max(motionFieldSize.y, 1),
+        );
         flarePass.resize(targetWidth, targetHeight);
         fluidPass.reset(renderer);
         root.dataset.postfxProfile = narrow || !finePointer.matches
           ? "static-optical"
-          : "five-pass-optical";
+          : "multiscale-temporal-optical";
         glassMaterial.uniforms.uSampleCount.value = narrow ? 2 : 3;
         camera.aspect = width / height;
         camera.position.z = narrow ? 9.4 : 7.9;
@@ -1266,6 +1303,8 @@ export function GlassWordScene() {
         if (!renderer) return;
         const bubbleOnly = root.dataset.qaBubbleOnly === "true";
         const opticalFieldVisible = fluidVisible && !bubbleOnly;
+        glassMaterial.uniforms.uMotionField.value = fluidPass.getMotionTexture();
+        glassMaterial.uniforms.uOpticalCoupling.value = opticalFieldVisible ? 1 : 0;
         renderer.setRenderTarget(sceneTarget);
         renderer.setClearColor(0x000000, 1);
         renderer.clear(true, true, true);
@@ -1368,7 +1407,9 @@ export function GlassWordScene() {
         if (disposed || contextLost || !renderer) return;
         if (heroVisible) {
           const elapsed = reducedMotion.matches ? 0 : clock.getElapsedTime();
-          const delta = reducedMotion.matches ? 0 : Math.min(0.05, Math.max(0, elapsed - previousElapsed));
+          const rawDelta = reducedMotion.matches ? 0 : Math.max(0, elapsed - previousElapsed);
+          const delta = Math.min(0.05, rawDelta);
+          const energyDelta = Math.min(0.25, rawDelta);
           const freezeAmbient = root.dataset.qaFreezeAmbient === "true";
           const postFxOnly = root.dataset.qaPostFxOnly === "true";
           const hideStickers = root.dataset.qaHideStickers === "true";
@@ -1465,24 +1506,36 @@ export function GlassWordScene() {
             freezeAmbient ? 0 : delta,
           ) ?? 0;
           if (stickerField) stickerField.mesh.visible = !hideStickers;
-          const pointerEffectsEnabled = !isNarrow && finePointer.matches && !reducedMotion.matches;
+          const instantForce = THREE.MathUtils.clamp(fluidPointerDelta.length() * 62, 0, 1);
           const pointerIdleMs = performance.now() - lastPointerMoveAt;
+          const energyDecay = Math.exp(-1.28 * energyDelta);
+          fluidEnergy = Math.max(fluidEnergy * energyDecay, instantForce);
+          if (lastPointerMoveAt > 0 && instantForce < 0.001) {
+            fluidEnergy = Math.min(
+              fluidEnergy,
+              Math.exp(-1.28 * Math.max(pointerIdleMs, 0) / 1000),
+            );
+          }
+          if (root.dataset.qaHoldFluid === "true") fluidEnergy = Math.max(fluidEnergy, 0.88);
+          const pointerEffectsEnabled = !isNarrow && finePointer.matches && !reducedMotion.matches;
           fluidVisible = pointerEffectsEnabled && (
-            root.dataset.qaHoldFluid === "true" || pointerIdleMs <= 900
+            root.dataset.qaHoldFluid === "true"
+            || pointerIdleMs <= 2600
+            || fluidEnergy > 0.028
           );
           flareVisible = true;
-          const instantForce = THREE.MathUtils.clamp(fluidPointerDelta.length() * 62, 0, 1);
-          const liveForceTarget = fluidVisible ? instantForce : 0;
+          const liveForceTarget = fluidVisible ? Math.max(instantForce, fluidEnergy * 0.58) : 0;
           const forceTarget = root.dataset.qaHoldBubble === "true"
             ? Math.max(liveForceTarget, glassForce)
             : liveForceTarget;
-          const forceResponse = 1 - Math.exp(-(forceTarget > glassForce ? 22 : 7.5) * delta);
+          const forceResponse = 1 - Math.exp(-(forceTarget > glassForce ? 24 : 3.6) * delta);
           glassForce = THREE.MathUtils.lerp(glassForce, forceTarget, forceResponse);
           if (fluidPointerDelta.lengthSq() > 0.000001) {
             glassVelocity.lerp(fluidPointerDelta, 0.48);
           }
           glassMaterial.uniforms.uCursorForce.value = glassForce;
           root.dataset.cursorForce = glassForce.toFixed(3);
+          root.dataset.fieldEnergy = fluidEnergy.toFixed(3);
           if (fluidVisible) {
             fluidPass.update(
               renderer,
@@ -1499,7 +1552,7 @@ export function GlassWordScene() {
           root.dataset.fluidState = fluidVisible ? "active" : "idle";
           root.dataset.flareState = "active";
           root.dataset.postfxPasses = fluidVisible && root.dataset.qaBubbleOnly !== "true"
-            ? "5"
+            ? "6"
             : "2";
           motionFrame += 1;
           if (motionFrame % 5 === 0) {
@@ -1599,8 +1652,9 @@ export function GlassWordScene() {
       data-postfx-storage="pending"
       data-deformation-profile="gel-bubble"
       data-cursor-force="0.000"
+      data-field-energy="0.000"
       data-render-state="loading"
-      data-render-layers="background+stickers|glass+ripples|motion|surface|refraction+dispersion|caustics|composite"
+      data-render-layers="background+stickers|multiscale-motion|glass+ripples+flow|surface|refraction+dispersion|temporal-afterglow|caustics|composite"
       data-scene-mode="loading"
       data-shimmer-state="loading"
       data-sticker-count="0"

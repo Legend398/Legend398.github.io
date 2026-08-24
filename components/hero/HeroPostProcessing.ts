@@ -10,9 +10,10 @@ const FULLSCREEN_VERTEX_SHADER = `
 `;
 
 // Original optical pipeline authored for this portfolio from a visual behavior
-// specification. It is an inertial brush field, not a pressure/fluid solver:
-// RG stores packed directional motion, B stores the slower wake and A stores
-// the crest. Packing keeps the effect on the universally renderable RGBA8 path.
+// specification. It uses a multiscale inertial flow field rather than a copied
+// pressure solver: RG stores packed directional motion, B stores the slower
+// wake and A stores the crest. Packing keeps the effect on the universally
+// renderable RGBA8 path.
 const MOTION_FIELD_FRAGMENT_SHADER = `
   precision highp float;
 
@@ -24,6 +25,7 @@ const MOTION_FIELD_FRAGMENT_SHADER = `
   uniform float uFrameTime;
   uniform float uPointerOn;
   uniform float uBrushRadius;
+  uniform float uBroadRadius;
   uniform float uMotionDrag;
   uniform float uWakeDrag;
   uniform float uCrestDrag;
@@ -43,29 +45,57 @@ const MOTION_FIELD_FRAGMENT_SHADER = `
     vec2 tracedUv = clamp(vUv - decodeMotion(seed.xy) * frameTime * 0.44, 0.002, 0.998);
 
     vec4 carried = texture2D(uHistory, tracedUv);
-    vec4 neighborhood = (
-      texture2D(uHistory, tracedUv + vec2(uTexelStep.x, 0.0))
-      + texture2D(uHistory, tracedUv - vec2(uTexelStep.x, 0.0))
-      + texture2D(uHistory, tracedUv + vec2(0.0, uTexelStep.y))
-      + texture2D(uHistory, tracedUv - vec2(0.0, uTexelStep.y))
-    ) * 0.25;
-    float diffusion = min(0.28, frameTime * 6.0);
+    vec4 leftState = texture2D(uHistory, tracedUv - vec2(uTexelStep.x, 0.0));
+    vec4 rightState = texture2D(uHistory, tracedUv + vec2(uTexelStep.x, 0.0));
+    vec4 downState = texture2D(uHistory, tracedUv - vec2(0.0, uTexelStep.y));
+    vec4 upState = texture2D(uHistory, tracedUv + vec2(0.0, uTexelStep.y));
+    vec4 neighborhood = (leftState + rightState + downState + upState) * 0.25;
+    float diffusion = min(0.34, frameTime * 7.4);
     vec4 state = mix(carried, neighborhood, diffusion);
     vec2 motion = decodeMotion(state.xy) * exp(-uMotionDrag * frameTime);
     float wake = state.z * exp(-uWakeDrag * frameTime);
     float crest = state.w * exp(-uCrestDrag * frameTime);
 
+    vec2 leftMotion = decodeMotion(leftState.xy);
+    vec2 rightMotion = decodeMotion(rightState.xy);
+    vec2 downMotion = decodeMotion(downState.xy);
+    vec2 upMotion = decodeMotion(upState.xy);
+    float curl = (rightMotion.y - leftMotion.y) - (upMotion.x - downMotion.x);
+    float divergence = (rightMotion.x - leftMotion.x) + (upMotion.y - downMotion.y);
+    vec2 wakeGradient = vec2(rightState.z - leftState.z, upState.z - downState.z);
+    vec2 confinement = normalize(wakeGradient + vec2(0.00001));
+    motion += vec2(confinement.y, -confinement.x) * curl * frameTime * 0.84;
+    motion -= wakeGradient * divergence * frameTime * 0.26;
+
     vec2 fromPointer = vUv - uPointer;
     vec2 metricDelta = vec2(fromPointer.x * uAspect, fromPointer.y);
-    float pointerDistance = length(metricDelta);
-    float brush = 1.0 - smoothstep(uBrushRadius * 0.18, uBrushRadius, pointerDistance);
+    vec2 metricImpulse = vec2(uImpulse.x * uAspect, uImpulse.y);
+    vec2 pointFromPrevious = metricDelta + metricImpulse;
+    float segmentProgress = clamp(
+      dot(pointFromPrevious, metricImpulse)
+        / max(dot(metricImpulse, metricImpulse), 0.00001),
+      0.0,
+      1.0
+    );
+    vec2 nearestSegmentDelta = pointFromPrevious - metricImpulse * segmentProgress;
+    float pointerDistance = length(nearestSegmentDelta);
+    float brush = 1.0 - smoothstep(uBrushRadius * 0.16, uBrushRadius, pointerDistance);
+    float broadBrush = exp(
+      -pointerDistance * pointerDistance / max(uBroadRadius * uBroadRadius * 0.46, 0.00001)
+    );
     vec2 orbit = normalize(vec2(-metricDelta.y, metricDelta.x) + vec2(0.00001));
     float impulseStrength = length(uImpulse);
-    vec2 directionalPush = uImpulse * 18.0;
-    vec2 curvedPush = orbit * impulseStrength * 1.7;
-    motion += (directionalPush + curvedPush) * brush * uPointerOn;
-    float injection = brush * uPointerOn * clamp(impulseStrength * 95.0, 0.35, 1.0);
-    wake = max(wake, injection);
+    vec2 directionalPush = uImpulse * 20.0;
+    vec2 curvedPush = orbit * impulseStrength * 2.25;
+    vec2 broadPush = uImpulse * 7.4 + orbit * impulseStrength * 0.72;
+    motion += (
+      (directionalPush + curvedPush) * brush
+      + broadPush * broadBrush
+    ) * uPointerOn;
+    float impulseGate = clamp(impulseStrength * 108.0, 0.28, 1.0);
+    float injection = brush * uPointerOn * impulseGate;
+    float broadInjection = broadBrush * uPointerOn * min(0.72, impulseGate * 0.72);
+    wake = max(wake, max(injection, broadInjection));
     float crestBrush = 1.0 - smoothstep(uBrushRadius * 0.28, uBrushRadius, pointerDistance);
     crest = max(crest, injection * crestBrush);
 
@@ -102,9 +132,9 @@ const SURFACE_FEATURE_FRAGMENT_SHADER = `
     float curl = motionDx.y - motionDy.x;
     float shear = motionDx.x - motionDy.y;
     vec2 surfaceNormal = wakeGradient * 2.4 + vec2(motionDx.y, motionDy.x) * 0.28;
-    float response = max(center.z, smoothstep(0.008, 0.22, length(centerMotion)) * 0.68);
+    float response = max(center.z, smoothstep(0.004, 0.18, length(centerMotion)) * 0.76);
     float curvature = clamp(
-      length(wakeGradient) * 3.2 + abs(curl) * 1.4 + abs(shear) * 0.7 + center.w * 0.9,
+      length(wakeGradient) * 3.8 + abs(curl) * 1.65 + abs(shear) * 0.82 + center.w,
       0.0,
       1.0
     );
@@ -122,6 +152,7 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
 
   uniform sampler2D uFrameInput;
   uniform sampler2D uBaseScene;
+  uniform sampler2D uFrameHistory;
   uniform sampler2D uMotionField;
   uniform sampler2D uSurfaceFeatures;
   uniform vec2 uResolution;
@@ -129,6 +160,7 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
   uniform vec2 uPointer;
   uniform float uAspect;
   uniform float uEffectMix;
+  uniform float uHistoryValid;
   uniform float uLensAmount;
   uniform float uPrismPixels;
   varying vec2 vUv;
@@ -150,7 +182,7 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     vec4 motionState = texture2D(uMotionField, vUv);
     vec4 features = texture2D(uSurfaceFeatures, vUv);
     float effectEnabled = step(0.5, uEffectMix);
-    float response = smoothstep(0.012, 0.5, features.z) * effectEnabled;
+    float response = smoothstep(0.006, 0.42, features.z) * effectEnabled;
     vec2 motion = decodeMotion(motionState.xy);
     vec2 normal = decodeNormal(features.xy);
     float curvature = features.w;
@@ -165,10 +197,11 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     float bubbleAlong = dot(metricPointerDelta, metricFlow) * 0.84;
     float bubbleAcross = dot(metricPointerDelta, metricTangent) * 1.12;
     float pointerDistance = length(vec2(bubbleAlong, bubbleAcross));
-    float normalizedBubbleDistance = clamp(pointerDistance / 0.086, 0.0, 1.0);
+    float normalizedBubbleDistance = clamp(pointerDistance / 0.166, 0.0, 1.0);
+    float broadEnvelope = 1.0 - smoothstep(0.10, 0.44, length(metricPointerDelta));
     vec2 radialDirection = normalize(metricPointerDelta + vec2(0.00001));
     radialDirection.x /= max(uAspect, 0.0001);
-    float pressureEnvelope = 1.0 - smoothstep(0.84, 1.0, normalizedBubbleDistance);
+    float pressureEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedBubbleDistance);
     float motionForce = smoothstep(0.025, 0.34, length(motion));
     float pressureDepth = max(crest, wake * 0.78);
     float sphereDepth = sqrt(max(0.0, 1.0 - normalizedBubbleDistance * normalizedBubbleDistance));
@@ -186,13 +219,25 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
       * bubbleShell
       * pressureDepth
       * bubbleWobble
-      * (0.038 + motionForce * 0.036);
-    vec2 refractionVector = motion * 0.078
+      * (0.042 + motionForce * 0.042);
+    float broadRing = exp(-pow((length(metricPointerDelta) - 0.245) / 0.112, 2.0));
+    float broadResponse = clamp(
+      broadEnvelope * max(wake * 1.04, motionForce * 0.72),
+      0.0,
+      1.0
+    );
+    vec2 broadWarp = (
+      radialDirection * (broadResponse * 0.033 + broadRing * crest * 0.011)
+      + tangent * broadResponse * 0.018
+    );
+    response = max(response, broadResponse * effectEnabled);
+    vec2 refractionVector = motion * 0.096
       + normal * uLensAmount
       + tangent * crestWave * curvature * 0.0038
-      + pressureBulge;
+      + pressureBulge
+      + broadWarp;
     float warpLength = length(refractionVector);
-    refractionVector *= min(1.0, 0.082 / max(warpLength, 0.00001));
+    refractionVector *= min(1.0, 0.12 / max(warpLength, 0.00001));
     vec2 refractedUv = clamp(
       vUv - refractionVector * response,
       0.002,
@@ -222,7 +267,7 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
       materialDifference(center.rgb, baseAtWarp.rgb)
     );
     float glassSilhouette = max(sourceGlass, warpedGlass);
-    float deformationWeight = response * mix(0.46, 1.0, glassSilhouette);
+    float deformationWeight = response * mix(0.77, 1.0, glassSilhouette);
     vec3 refracted = vec3(
       texture2D(uFrameInput, clamp(refractedUv + prismOffset * 1.15, 0.002, 0.998)).r,
       center.g,
@@ -234,6 +279,28 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     ) * 0.5;
     refracted = mix(refracted, internalScatter, deformationWeight * curvature * 0.18);
 
+    float wakeBands = 0.5 + 0.5 * sin(
+      dot(metricPointerDelta, metricTangent) * 42.0
+      + dot(metricPointerDelta, metricFlow) * 11.0
+      + curvature * 6.0
+    );
+    float broadSheen = smoothstep(0.58, 0.94, wakeBands)
+      * broadResponse
+      * (0.35 + curvature * 0.65);
+    refracted += vec3(0.024, 0.041, 0.058) * broadSheen;
+
+    vec2 historyUv = clamp(
+      vUv + motion * 0.012 - normal * 0.004,
+      0.002,
+      0.998
+    );
+    vec3 historyColor = texture2D(uFrameHistory, historyUv).rgb;
+    float historyWeight = uHistoryValid
+      * effectEnabled
+      * clamp(wake * 0.17 + curvature * 0.055, 0.0, 0.22)
+      * mix(0.68, 1.0, glassSilhouette);
+    refracted = mix(refracted, historyColor, historyWeight);
+
     gl_FragColor = vec4(mix(original.rgb, refracted, deformationWeight), original.a);
   }
 `;
@@ -241,6 +308,21 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
 const CLEAR_FRAGMENT_SHADER = `
   void main() {
     gl_FragColor = vec4(0.5, 0.5, 0.0, 0.0);
+  }
+`;
+
+const CLEAR_COLOR_FRAGMENT_SHADER = `
+  void main() {
+    gl_FragColor = vec4(0.0);
+  }
+`;
+
+const COPY_FRAGMENT_SHADER = `
+  uniform sampler2D uInput;
+  varying vec2 vUv;
+
+  void main() {
+    gl_FragColor = texture2D(uInput, vUv);
   }
 `;
 
@@ -461,6 +543,7 @@ export class HeroFluidPass {
   private motionRead = createDataTarget();
   private motionWrite = createDataTarget();
   private readonly featureTarget = createDataTarget();
+  private readonly historyTarget = createColorTarget();
   private readonly resolution = new THREE.Vector2(1, 1);
   private readonly fieldSize = new THREE.Vector2(1, 1);
   private readonly texelStep = new THREE.Vector2(1, 1);
@@ -472,10 +555,11 @@ export class HeroFluidPass {
     uAspect: { value: 1 },
     uFrameTime: { value: 0 },
     uPointerOn: { value: 0 },
-    uBrushRadius: { value: 0.062 },
-    uMotionDrag: { value: 7.2 },
-    uWakeDrag: { value: 2.35 },
-    uCrestDrag: { value: 10.5 },
+    uBrushRadius: { value: 0.13 },
+    uBroadRadius: { value: 0.42 },
+    uMotionDrag: { value: 4.1 },
+    uWakeDrag: { value: 0.72 },
+    uCrestDrag: { value: 6.4 },
   });
   private readonly featureMaterial = createFullscreenMaterial(SURFACE_FEATURE_FRAGMENT_SHADER, {
     uMotionField: { value: this.motionRead.texture },
@@ -484,6 +568,7 @@ export class HeroFluidPass {
   private readonly displayMaterial = createFullscreenMaterial(COMPOUND_REFRACTION_FRAGMENT_SHADER, {
     uFrameInput: { value: null },
     uBaseScene: { value: null },
+    uFrameHistory: { value: this.historyTarget.texture },
     uMotionField: { value: this.motionRead.texture },
     uSurfaceFeatures: { value: this.featureTarget.texture },
     uResolution: { value: this.resolution },
@@ -491,10 +576,16 @@ export class HeroFluidPass {
     uPointer: { value: new THREE.Vector2(0.5, 0.5) },
     uAspect: { value: 1 },
     uEffectMix: { value: 0 },
-    uLensAmount: { value: 0.027 },
-    uPrismPixels: { value: 2.1 },
+    uHistoryValid: { value: 0 },
+    uLensAmount: { value: 0.031 },
+    uPrismPixels: { value: 2.45 },
   });
   private readonly clearMaterial = createFullscreenMaterial(CLEAR_FRAGMENT_SHADER, {});
+  private readonly clearColorMaterial = createFullscreenMaterial(CLEAR_COLOR_FRAGMENT_SHADER, {});
+  private readonly copyMaterial = createFullscreenMaterial(COPY_FRAGMENT_SHADER, {
+    uInput: { value: null },
+  });
+  private hasHistory = false;
 
   constructor() {
     this.quad = new THREE.Mesh(this.geometry, this.motionMaterial);
@@ -530,6 +621,11 @@ export class HeroFluidPass {
     this.displayMaterial.uniforms.uAspect.value = aspect;
     [this.motionRead, this.motionWrite, this.featureTarget]
       .forEach((target) => target.setSize(fieldWidth, fieldHeight));
+    this.historyTarget.setSize(
+      Math.max(1, Math.round(renderWidth * 0.35)),
+      Math.max(1, Math.round(renderHeight * 0.35)),
+    );
+    this.hasHistory = false;
   }
 
   update(
@@ -561,10 +657,16 @@ export class HeroFluidPass {
 
     this.displayMaterial.uniforms.uFrameInput.value = inputTexture;
     this.displayMaterial.uniforms.uBaseScene.value = baseTexture;
+    this.displayMaterial.uniforms.uFrameHistory.value = this.historyTarget.texture;
     this.displayMaterial.uniforms.uMotionField.value = this.motionRead.texture;
     this.displayMaterial.uniforms.uSurfaceFeatures.value = this.featureTarget.texture;
     this.displayMaterial.uniforms.uEffectMix.value = enabled ? 1 : 0;
+    this.displayMaterial.uniforms.uHistoryValid.value = this.hasHistory && enabled ? 1 : 0;
     this.renderMaterial(renderer, this.displayMaterial, outputTarget);
+
+    this.copyMaterial.uniforms.uInput.value = outputTarget.texture;
+    this.renderMaterial(renderer, this.copyMaterial, this.historyTarget);
+    this.hasHistory = enabled;
   }
 
   getMotionTexture() {
@@ -581,7 +683,7 @@ export class HeroFluidPass {
 
   validateTargets(renderer: THREE.WebGLRenderer) {
     const gl = renderer.getContext();
-    [this.motionRead, this.motionWrite, this.featureTarget].forEach((target) => {
+    [this.motionRead, this.motionWrite, this.featureTarget, this.historyTarget].forEach((target) => {
       renderer.setRenderTarget(target);
       if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
         throw new Error("WebGL optical framebuffer is incomplete");
@@ -592,13 +694,22 @@ export class HeroFluidPass {
   reset(renderer: THREE.WebGLRenderer) {
     [this.motionRead, this.motionWrite, this.featureTarget]
       .forEach((target) => this.renderMaterial(renderer, this.clearMaterial, target));
+    this.renderMaterial(renderer, this.clearColorMaterial, this.historyTarget);
+    this.hasHistory = false;
   }
 
   dispose() {
     this.geometry.dispose();
-    [this.motionMaterial, this.featureMaterial, this.displayMaterial, this.clearMaterial]
+    [
+      this.motionMaterial,
+      this.featureMaterial,
+      this.displayMaterial,
+      this.clearMaterial,
+      this.clearColorMaterial,
+      this.copyMaterial,
+    ]
       .forEach((material) => material.dispose());
-    [this.motionRead, this.motionWrite, this.featureTarget]
+    [this.motionRead, this.motionWrite, this.featureTarget, this.historyTarget]
       .forEach((target) => target.dispose());
   }
 }
@@ -621,12 +732,12 @@ export class HeroFlarePass {
     uResolution: { value: this.resolution },
     uFieldSize: { value: this.fieldSize },
     uTailColor: { value: new THREE.Color(0x009dff) },
-    uIntensity: { value: 0.74 },
-    uThreshold: { value: 0.985 },
+    uIntensity: { value: 0.82 },
+    uThreshold: { value: 0.968 },
     uStreakScale: { value: 8 },
-    uHotspotPower: { value: 18 },
-    uGate: { value: 0.82 },
-    uHaloIntensity: { value: 0.55 },
+    uHotspotPower: { value: 12 },
+    uGate: { value: 0.68 },
+    uHaloIntensity: { value: 0.76 },
     uMotionCoupling: { value: 0 },
   });
   private readonly compositeMaterial = createFullscreenMaterial(FINAL_COMPOSITE_FRAGMENT_SHADER, {
