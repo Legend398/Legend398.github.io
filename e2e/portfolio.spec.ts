@@ -77,6 +77,57 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.pageWidth).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
 }
 
+async function measureImageDifference(page: Page, before: Buffer, after: Buffer) {
+  return page.evaluate(async ({ beforeSource, afterSource }) => {
+    const decode = (source: string) => new Promise<ImageData>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) {
+          reject(new Error("Could not create an image comparison context."));
+          return;
+        }
+        context.drawImage(image, 0, 0);
+        resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+      };
+      image.onerror = () => reject(new Error("Could not decode a comparison image."));
+      image.src = source;
+    });
+
+    const [first, second] = await Promise.all([
+      decode(beforeSource),
+      decode(afterSource),
+    ]);
+    if (first.data.length !== second.data.length) {
+      throw new Error("Comparison images have different dimensions.");
+    }
+
+    let changedPixels = 0;
+    let totalDelta = 0;
+    const pixelCount = first.data.length / 4;
+    for (let offset = 0; offset < first.data.length; offset += 4) {
+      const delta = Math.max(
+        Math.abs(first.data[offset] - second.data[offset]),
+        Math.abs(first.data[offset + 1] - second.data[offset + 1]),
+        Math.abs(first.data[offset + 2] - second.data[offset + 2]),
+      );
+      totalDelta += delta;
+      if (delta >= 8) changedPixels += 1;
+    }
+
+    return {
+      changedRatio: changedPixels / pixelCount,
+      meanDelta: totalDelta / pixelCount,
+    };
+  }, {
+    beforeSource: `data:image/png;base64,${before.toString("base64")}`,
+    afterSource: `data:image/png;base64,${after.toString("base64")}`,
+  });
+}
+
 async function expectBoxInsideViewport(locator: Locator, viewport: { width: number; height: number }) {
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
@@ -365,6 +416,7 @@ test("hero cursor field refracts while the flare follows movement in real time",
   );
   await expect(scene).toHaveAttribute("data-postfx-profile", "five-pass-optical");
   await expect(scene).toHaveAttribute("data-postfx-storage", "rgba8-packed");
+  await expect(scene).toHaveAttribute("data-deformation-profile", "gel-bubble");
   await expect(scene).toHaveAttribute("data-fluid-state", "idle");
   await expect(scene).toHaveAttribute("data-postfx-passes", "2");
   await expect(scene).toHaveAttribute("data-flare-state", "active");
@@ -388,6 +440,7 @@ test("hero cursor field refracts while the flare follows movement in real time",
   const idlePixels = await captureCanvas();
   await scene.evaluate((element) => {
     (element as HTMLElement).dataset.qaHoldFluid = "true";
+    (element as HTMLElement).dataset.qaHoldBubble = "true";
   });
 
   await page.mouse.move(hitPoint.x - 80, hitPoint.y - 18, { steps: 10 });
@@ -408,18 +461,80 @@ test("hero cursor field refracts while the flare follows movement in real time",
   }, hitPoint);
   expect(activeStates).toBe("active|active");
   await expect(scene).toHaveAttribute("data-postfx-passes", "5");
+  await expect.poll(async () => Number(await scene.getAttribute("data-cursor-force"))).toBeGreaterThan(0.12);
   await expect(scene).toHaveAttribute("data-camera-parallax-x", "0.0000");
   await expect(scene).toHaveAttribute("data-camera-parallax-y", "0.0000");
   const movingPixels = await captureCanvas();
 
   await scene.evaluate((element) => {
     delete (element as HTMLElement).dataset.qaHoldFluid;
+    delete (element as HTMLElement).dataset.qaHoldBubble;
   });
   await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
   await expect(scene).toHaveAttribute("data-flare-state", "active");
   const settledPixels = await captureCanvas();
   expect(movingPixels.equals(idlePixels)).toBe(false);
   expect(movingPixels.equals(settledPixels)).toBe(false);
+});
+
+test("gel bubble visibly bends the hello word without changing a distant control region", async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+
+  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
+  await expect(scene).toHaveAttribute("data-deformation-profile", "gel-bubble");
+  const hitPoint = await movePointerToGlassWord(page, scene);
+  const canvasBox = await scene.locator("canvas").boundingBox();
+  expect(canvasBox).not.toBeNull();
+  if (!canvasBox) return;
+
+  const roiWidth = 176;
+  const roiHeight = 144;
+  const wordClip = {
+    x: Math.max(canvasBox.x, Math.min(hitPoint.x - roiWidth / 2, canvasBox.x + canvasBox.width - roiWidth)),
+    y: Math.max(canvasBox.y, Math.min(hitPoint.y - roiHeight / 2, canvasBox.y + canvasBox.height - roiHeight)),
+    width: roiWidth,
+    height: roiHeight,
+  };
+  const controlClip = {
+    x: canvasBox.x + 8,
+    y: canvasBox.y + canvasBox.height - roiHeight - 8,
+    width: roiWidth,
+    height: roiHeight,
+  };
+
+  await page.mouse.move(8, 8);
+  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 2_000 });
+  await scene.evaluate((element) => {
+    const target = element as HTMLElement;
+    target.dataset.qaFreezeAmbient = "true";
+    target.dataset.qaHideStickers = "true";
+    target.dataset.qaPostFxOnly = "true";
+    target.dataset.qaBubbleOnly = "true";
+  });
+  await page.waitForTimeout(150);
+  const idleWord = await page.screenshot({ clip: wordClip });
+  const idleControl = await page.screenshot({ clip: controlClip });
+
+  await scene.evaluate((element) => {
+    const target = element as HTMLElement;
+    target.dataset.qaHoldFluid = "true";
+    target.dataset.qaHoldBubble = "true";
+  });
+  await page.mouse.move(hitPoint.x - 52, hitPoint.y - 8, { steps: 8 });
+  await page.mouse.move(hitPoint.x + 52, hitPoint.y + 8, { steps: 14 });
+  await page.mouse.move(hitPoint.x, hitPoint.y, { steps: 8 });
+  await expect.poll(async () => Number(await scene.getAttribute("data-cursor-force"))).toBeGreaterThan(0.35);
+  await expect(scene).toHaveAttribute("data-postfx-passes", "2");
+  const activeWord = await page.screenshot({ clip: wordClip });
+  const activeControl = await page.screenshot({ clip: controlClip });
+
+  const wordDifference = await measureImageDifference(page, idleWord, activeWord);
+  const controlDifference = await measureImageDifference(page, idleControl, activeControl);
+  expect(wordDifference.changedRatio).toBeGreaterThan(0.012);
+  expect(wordDifference.meanDelta).toBeGreaterThan(1.2);
+  expect(wordDifference.meanDelta).toBeGreaterThan(controlDifference.meanDelta * 3 + 0.5);
 });
 
 test("pointer movement outside the sculpted word does not create word ripples", async ({ page }) => {

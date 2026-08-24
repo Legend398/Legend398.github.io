@@ -121,10 +121,13 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
   precision highp float;
 
   uniform sampler2D uFrameInput;
+  uniform sampler2D uBaseScene;
   uniform sampler2D uMotionField;
   uniform sampler2D uSurfaceFeatures;
   uniform vec2 uResolution;
   uniform vec2 uFieldSize;
+  uniform vec2 uPointer;
+  uniform float uAspect;
   uniform float uEffectMix;
   uniform float uLensAmount;
   uniform float uPrismPixels;
@@ -138,6 +141,11 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     return packedNormal * 2.0 - 1.0;
   }
 
+  float materialDifference(vec3 rendered, vec3 base) {
+    vec3 difference = abs(rendered - base);
+    return max(max(difference.r, difference.g), difference.b);
+  }
+
   void main() {
     vec4 motionState = texture2D(uMotionField, vUv);
     vec4 features = texture2D(uSurfaceFeatures, vUv);
@@ -146,16 +154,45 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
     vec2 motion = decodeMotion(motionState.xy);
     vec2 normal = decodeNormal(features.xy);
     float curvature = features.w;
+    float wake = motionState.z;
+    float crest = motionState.w;
     vec2 flowDirection = normalize(motion + vec2(0.00001));
     vec2 tangent = vec2(-flowDirection.y, flowDirection.x);
+    vec2 pointerDelta = vUv - uPointer;
+    vec2 metricPointerDelta = vec2(pointerDelta.x * uAspect, pointerDelta.y);
+    vec2 metricFlow = normalize(vec2(flowDirection.x * uAspect, flowDirection.y) + vec2(0.00001));
+    vec2 metricTangent = vec2(-metricFlow.y, metricFlow.x);
+    float bubbleAlong = dot(metricPointerDelta, metricFlow) * 0.84;
+    float bubbleAcross = dot(metricPointerDelta, metricTangent) * 1.12;
+    float pointerDistance = length(vec2(bubbleAlong, bubbleAcross));
+    float normalizedBubbleDistance = clamp(pointerDistance / 0.086, 0.0, 1.0);
+    vec2 radialDirection = normalize(metricPointerDelta + vec2(0.00001));
+    radialDirection.x /= max(uAspect, 0.0001);
+    float pressureEnvelope = 1.0 - smoothstep(0.84, 1.0, normalizedBubbleDistance);
+    float motionForce = smoothstep(0.025, 0.34, length(motion));
+    float pressureDepth = max(crest, wake * 0.78);
+    float sphereDepth = sqrt(max(0.0, 1.0 - normalizedBubbleDistance * normalizedBubbleDistance));
+    float bubbleShell = pow(1.0 - sphereDepth, 0.72) * pressureEnvelope;
+    float bubbleWobble = 1.0 + sin(
+      atan(metricPointerDelta.y, metricPointerDelta.x) * 3.0
+      + wake * 4.0
+    ) * 0.09 * motionForce;
     float crestWave = sin(
       dot(vUv * uFieldSize, tangent) * 0.34
       + dot(vUv * uFieldSize, flowDirection) * 0.11
       + curvature * 4.0
     );
-    vec2 refractionVector = motion * 0.032
+    vec2 pressureBulge = radialDirection
+      * bubbleShell
+      * pressureDepth
+      * bubbleWobble
+      * (0.038 + motionForce * 0.036);
+    vec2 refractionVector = motion * 0.078
       + normal * uLensAmount
-      + tangent * crestWave * curvature * 0.0014;
+      + tangent * crestWave * curvature * 0.0038
+      + pressureBulge;
+    float warpLength = length(refractionVector);
+    refractionVector *= min(1.0, 0.082 / max(warpLength, 0.00001));
     vec2 refractedUv = clamp(
       vUv - refractionVector * response,
       0.002,
@@ -164,10 +201,28 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
 
     vec2 pixelSize = 1.0 / max(uResolution, vec2(1.0));
     vec2 prismAxis = normalize(normal + tangent * 0.36 + vec2(0.00001));
-    vec2 prismOffset = prismAxis * pixelSize * uPrismPixels * (0.45 + curvature) * response;
+    vec2 prismOffset = prismAxis
+      * pixelSize
+      * uPrismPixels
+      * (0.45 + curvature + bubbleShell * pressureDepth * 1.8)
+      * response;
 
     vec4 original = texture2D(uFrameInput, vUv);
+    vec4 baseAtSource = texture2D(uBaseScene, vUv);
     vec4 center = texture2D(uFrameInput, refractedUv);
+    vec4 baseAtWarp = texture2D(uBaseScene, refractedUv);
+    float sourceGlass = smoothstep(
+      0.018,
+      0.13,
+      materialDifference(original.rgb, baseAtSource.rgb)
+    );
+    float warpedGlass = smoothstep(
+      0.018,
+      0.13,
+      materialDifference(center.rgb, baseAtWarp.rgb)
+    );
+    float glassSilhouette = max(sourceGlass, warpedGlass);
+    float deformationWeight = response * mix(0.46, 1.0, glassSilhouette);
     vec3 refracted = vec3(
       texture2D(uFrameInput, clamp(refractedUv + prismOffset * 1.15, 0.002, 0.998)).r,
       center.g,
@@ -177,9 +232,9 @@ const COMPOUND_REFRACTION_FRAGMENT_SHADER = `
       texture2D(uFrameInput, clamp(refractedUv + normal * 0.0045, 0.002, 0.998)).rgb
       + texture2D(uFrameInput, clamp(refractedUv - normal * 0.0032, 0.002, 0.998)).rgb
     ) * 0.5;
-    refracted = mix(refracted, internalScatter, response * curvature * 0.16);
+    refracted = mix(refracted, internalScatter, deformationWeight * curvature * 0.18);
 
-    gl_FragColor = vec4(mix(original.rgb, refracted, response * 0.94), original.a);
+    gl_FragColor = vec4(mix(original.rgb, refracted, deformationWeight), original.a);
   }
 `;
 
@@ -428,13 +483,16 @@ export class HeroFluidPass {
   });
   private readonly displayMaterial = createFullscreenMaterial(COMPOUND_REFRACTION_FRAGMENT_SHADER, {
     uFrameInput: { value: null },
+    uBaseScene: { value: null },
     uMotionField: { value: this.motionRead.texture },
     uSurfaceFeatures: { value: this.featureTarget.texture },
     uResolution: { value: this.resolution },
     uFieldSize: { value: this.fieldSize },
+    uPointer: { value: new THREE.Vector2(0.5, 0.5) },
+    uAspect: { value: 1 },
     uEffectMix: { value: 0 },
-    uLensAmount: { value: 0.013 },
-    uPrismPixels: { value: 1.6 },
+    uLensAmount: { value: 0.027 },
+    uPrismPixels: { value: 2.1 },
   });
   private readonly clearMaterial = createFullscreenMaterial(CLEAR_FRAGMENT_SHADER, {});
 
@@ -469,6 +527,7 @@ export class HeroFluidPass {
     this.fieldSize.set(fieldWidth, fieldHeight);
     this.texelStep.set(1 / fieldWidth, 1 / fieldHeight);
     this.motionMaterial.uniforms.uAspect.value = aspect;
+    this.displayMaterial.uniforms.uAspect.value = aspect;
     [this.motionRead, this.motionWrite, this.featureTarget]
       .forEach((target) => target.setSize(fieldWidth, fieldHeight));
   }
@@ -482,6 +541,7 @@ export class HeroFluidPass {
   ) {
     this.motionMaterial.uniforms.uHistory.value = this.motionRead.texture;
     this.motionMaterial.uniforms.uPointer.value.copy(pointerUv);
+    this.displayMaterial.uniforms.uPointer.value.copy(pointerUv);
     this.motionMaterial.uniforms.uImpulse.value.copy(pointerDeltaUv);
     this.motionMaterial.uniforms.uFrameTime.value = delta;
     this.motionMaterial.uniforms.uPointerOn.value = injectPointer ? 1 : 0;
@@ -492,6 +552,7 @@ export class HeroFluidPass {
   render(
     renderer: THREE.WebGLRenderer,
     inputTexture: THREE.Texture,
+    baseTexture: THREE.Texture,
     outputTarget: THREE.WebGLRenderTarget,
     enabled: boolean,
   ) {
@@ -499,6 +560,7 @@ export class HeroFluidPass {
     this.renderMaterial(renderer, this.featureMaterial, this.featureTarget);
 
     this.displayMaterial.uniforms.uFrameInput.value = inputTexture;
+    this.displayMaterial.uniforms.uBaseScene.value = baseTexture;
     this.displayMaterial.uniforms.uMotionField.value = this.motionRead.texture;
     this.displayMaterial.uniforms.uSurfaceFeatures.value = this.featureTarget.texture;
     this.displayMaterial.uniforms.uEffectMix.value = enabled ? 1 : 0;
