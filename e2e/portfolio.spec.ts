@@ -279,7 +279,7 @@ test("profile ripple mounts only while the About card is visible", async ({ page
   await expect(ripple).toHaveCount(0);
 });
 
-test("hero becomes ready while the downloaded GLTF is still pending", async ({ page }) => {
+test("hero remains covered while the downloaded GLTF is pending or unavailable", async ({ page }) => {
   let releaseModelRequest: (() => void) | undefined;
   await page.route("**/model/hello.gltf", async (route) => {
     await new Promise<void>((resolve) => {
@@ -293,14 +293,45 @@ test("hero becomes ready while the downloaded GLTF is still pending", async ({ p
 
   try {
     const glass = page.locator('[data-v8-hero] [data-glass-stage]');
-    await expect(glass).toHaveAttribute("data-render-state", "ready");
-    await expect(glass).toHaveAttribute("data-model-source", "generated-path");
+    await expect(glass).toHaveAttribute("data-render-state", "loading");
+    await expect(glass).toHaveAttribute("data-model-source", "loading");
     await expect(glass).toHaveAttribute("data-renderer", "webgl");
     await expect(glass).toHaveAttribute("data-scene-mode", "webgl");
-    await expect(glass).toHaveClass(/isReady/);
-    await expect(glass.locator("canvas")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
+
+    releaseModelRequest?.();
+    await expect(glass).toHaveAttribute("data-model-source", "failed");
+    await expect(glass).toHaveAttribute("data-model-state", "failed");
+    await expect(glass).toHaveAttribute("data-render-state", "loading");
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
   } finally {
     releaseModelRequest?.();
+  }
+});
+
+test("slow sticker textures do not block the downloaded WebGL hero", async ({ page }) => {
+  let releaseStickerRequests: (() => void) | undefined;
+  const stickerGate = new Promise<void>((resolve) => {
+    releaseStickerRequests = resolve;
+  });
+  await page.route("**/sticker_img/original/*.png", async (route) => {
+    await stickerGate;
+    await route.abort();
+  });
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+
+  try {
+    const glass = page.locator('[data-v8-hero] [data-glass-stage]');
+    await expect(glass).toHaveAttribute("data-render-state", "ready");
+    await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
+    await expect(glass).toHaveAttribute("data-renderer", "webgl");
+    await expect(glass).toHaveAttribute("data-postfx-profile", "multiscale-temporal-optical");
+    await expect(glass).toHaveAttribute("data-sticker-state", "loading");
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+  } finally {
+    releaseStickerRequests?.();
   }
 });
 

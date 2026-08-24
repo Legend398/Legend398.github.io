@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { preload } from "react-dom";
 import { GlassWordScene } from "@/components/GlassWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
@@ -21,6 +22,12 @@ const jsonLd = {
 };
 
 export default function HomePage() {
+  preload("/model/hello.gltf", {
+    as: "fetch",
+    crossOrigin: "anonymous",
+    type: "model/gltf+json",
+  });
+
   return (
     <HomeRuntime>
       <main className={styles.home} id="main-content" data-home-root>

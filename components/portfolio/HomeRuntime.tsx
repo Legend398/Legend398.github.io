@@ -9,7 +9,6 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const HERO_SCENE_READY_EVENT = "hero-scene-ready";
 const LOADER_MINIMUM_MS = 600;
 const LOADER_EXIT_MS = 680;
-const LOADER_SAFETY_TIMEOUT_MS = 9_000;
 
 type LoaderPhase = "loading" | "leaving" | "hidden";
 
@@ -69,16 +68,24 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       }, remainingMinimum);
     };
 
+    const allowsStaticFallback = window.matchMedia(REDUCED_MOTION_QUERY).matches;
+    const releaseForCompleteScene = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
+      if (mode === "webgl" || allowsStaticFallback) releaseLoader();
+    };
     const scene = document.querySelector<HTMLElement>(".glassScene");
-    if (scene?.dataset.renderState === "ready") releaseLoader();
-    window.addEventListener(HERO_SCENE_READY_EVENT, releaseLoader);
-    const safetyTimer = window.setTimeout(releaseLoader, LOADER_SAFETY_TIMEOUT_MS);
+    if (
+      scene?.dataset.renderState === "ready"
+      && (scene.dataset.sceneMode === "webgl" || allowsStaticFallback)
+    ) {
+      releaseLoader();
+    }
+    window.addEventListener(HERO_SCENE_READY_EVENT, releaseForCompleteScene);
 
     return () => {
       window.clearTimeout(revealTimer);
       window.clearTimeout(removeTimer);
-      window.clearTimeout(safetyTimer);
-      window.removeEventListener(HERO_SCENE_READY_EVENT, releaseLoader);
+      window.removeEventListener(HERO_SCENE_READY_EVENT, releaseForCompleteScene);
       unlockPage();
     };
   }, []);

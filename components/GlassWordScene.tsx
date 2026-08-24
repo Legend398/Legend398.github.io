@@ -9,7 +9,7 @@ import { SCULPTED_WORD_PATH } from "@/components/SculptedWordPath";
 import { createCleanroomHelloGeometry } from "@/components/hero/CleanroomHelloGeometry";
 import { HeroFlarePass, HeroFluidPass } from "@/components/hero/HeroPostProcessing";
 
-type HelloModelSource = "generated-path" | "downloaded-gltf" | "cleanroom-v2";
+type HelloModelSource = "downloaded-gltf" | "cleanroom-v2";
 
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
@@ -680,7 +680,9 @@ export function GlassWordScene() {
     const disposables: Disposable[] = [];
     let shaderPassesReady = false;
     let modelReady = false;
-    let stickersReady = false;
+    let stickerLoadStarted = false;
+    let stickerLoadTimer = 0;
+    let startStickerLoad = () => {};
     let sceneReadyNotified = false;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
@@ -815,18 +817,9 @@ export function GlassWordScene() {
     window.addEventListener("blur", resetPointer);
     document.documentElement.addEventListener("pointerleave", resetPointer, { passive: true });
 
-    let readinessWatchdog = 0;
-    const clearReadinessWatchdog = () => {
-      if (readinessWatchdog) {
-        window.clearTimeout(readinessWatchdog);
-        readinessWatchdog = 0;
-      }
-    };
-
     const notifySceneReady = (mode: "webgl" | "fallback") => {
       if (sceneReadyNotified || disposed) return;
       sceneReadyNotified = true;
-      clearReadinessWatchdog();
       root.dataset.renderState = "ready";
       if (mode === "fallback") {
         root.classList.add("isReady");
@@ -838,14 +831,23 @@ export function GlassWordScene() {
       window.dispatchEvent(new CustomEvent(HERO_SCENE_READY_EVENT, {
         detail: { mode, modelSource: root.dataset.modelSource },
       }));
+      if (mode === "webgl" && !stickerLoadTimer) {
+        stickerLoadTimer = window.setTimeout(() => {
+          stickerLoadTimer = 0;
+          startStickerLoad();
+        }, 450);
+      }
     };
 
     const tryMarkSceneReady = () => {
-      if (shaderPassesReady && modelReady && stickersReady) notifySceneReady("webgl");
+      if (shaderPassesReady && modelReady) notifySceneReady("webgl");
     };
 
     const setFallback = () => {
-      clearReadinessWatchdog();
+      if (stickerLoadTimer) {
+        window.clearTimeout(stickerLoadTimer);
+        stickerLoadTimer = 0;
+      }
       root.dataset.renderer = "fallback";
       root.dataset.sceneMode = "fallback";
       root.dataset.activeRipples = "0";
@@ -869,21 +871,22 @@ export function GlassWordScene() {
     const markModelReady = (modelSource: HelloModelSource) => {
       if (disposed) return;
       root.dataset.modelSource = modelSource;
+      root.dataset.modelState = "ready";
       modelReady = true;
       tryMarkSceneReady();
     };
 
-    readinessWatchdog = window.setTimeout(() => {
-      if (!disposed && root.dataset.renderState !== "ready") {
-        startFallbackAnimation();
-      }
-    }, 8_000);
+    const markModelFailed = () => {
+      if (disposed) return;
+      root.dataset.modelSource = "failed";
+      root.dataset.modelState = "failed";
+    };
 
     if (reducedMotion.matches) {
       startFallbackAnimation();
       return () => {
         disposed = true;
-        clearReadinessWatchdog();
+        window.clearTimeout(stickerLoadTimer);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1303,28 +1306,29 @@ export function GlassWordScene() {
 
       root.dataset.shimmerState = "animated";
       root.dataset.stickerCount = String(STICKER_COUNT);
-      root.dataset.stickerState = "loading";
-      void createStickerField(camera)
-        .then((field) => {
-          if (disposed) {
-            field.dispose();
-            return;
-          }
-          stickerField = field;
-          backgroundScene.add(field.mesh);
-          field.resize(camera);
-          disposables.push(field);
-          root.dataset.stickerState = "falling";
-          stickersReady = true;
-          tryMarkSceneReady();
-          wakeAnimation();
-        })
-        .catch(() => {
-          root.dataset.stickerCount = "0";
-          root.dataset.stickerState = "failed";
-          stickersReady = true;
-          tryMarkSceneReady();
-        });
+      root.dataset.stickerState = "deferred";
+      startStickerLoad = () => {
+        if (disposed || contextLost || stickerLoadStarted) return;
+        stickerLoadStarted = true;
+        root.dataset.stickerState = "loading";
+        void createStickerField(camera)
+          .then((field) => {
+            if (disposed || contextLost) {
+              field.dispose();
+              return;
+            }
+            stickerField = field;
+            backgroundScene.add(field.mesh);
+            field.resize(camera);
+            disposables.push(field);
+            root.dataset.stickerState = "falling";
+            wakeAnimation();
+          })
+          .catch(() => {
+            root.dataset.stickerCount = "0";
+            root.dataset.stickerState = "failed";
+          });
+      };
 
       if (!useCleanroomPreview) {
         const modelLoader = new GLTFLoader();
@@ -1347,14 +1351,12 @@ export function GlassWordScene() {
               activeUntil = performance.now() + 900;
               wakeAnimation();
             } catch {
-              markModelReady("generated-path");
-              wakeAnimation();
+              markModelFailed();
             }
           },
           undefined,
           () => {
-            markModelReady("generated-path");
-            wakeAnimation();
+            markModelFailed();
           },
         );
       }
@@ -1676,7 +1678,7 @@ export function GlassWordScene() {
 
       return () => {
         disposed = true;
-        clearReadinessWatchdog();
+        window.clearTimeout(stickerLoadTimer);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1694,7 +1696,7 @@ export function GlassWordScene() {
       startFallbackAnimation();
       return () => {
         disposed = true;
-        clearReadinessWatchdog();
+        window.clearTimeout(stickerLoadTimer);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1732,6 +1734,7 @@ export function GlassWordScene() {
       data-light-x="4"
       data-light-y="9"
       data-model-source="loading"
+      data-model-state="loading"
       data-motion-tick="0"
       data-pointer-contact="false"
       data-pointer-inside="false"
