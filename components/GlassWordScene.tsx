@@ -14,6 +14,7 @@ type HelloModelSource = "generated-path" | "downloaded-gltf" | "cleanroom-v2";
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
 const STICKER_COUNT = 14;
+const HERO_SCENE_READY_EVENT = "hero-scene-ready";
 const STICKER_CAPACITY = 84;
 const STICKER_COLUMNS = 4;
 const STICKER_ROWS = 4;
@@ -673,6 +674,10 @@ export function GlassWordScene() {
     let activeUntil = performance.now() + 160;
     let wakeAnimation = () => {};
     const disposables: Disposable[] = [];
+    let shaderPassesReady = false;
+    let modelReady = false;
+    let stickersReady = false;
+    let sceneReadyNotified = false;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
     const pointerNdc = new THREE.Vector2();
@@ -813,11 +818,31 @@ export function GlassWordScene() {
       }
     };
 
+    const notifySceneReady = (mode: "webgl" | "fallback") => {
+      if (sceneReadyNotified || disposed) return;
+      sceneReadyNotified = true;
+      clearReadinessWatchdog();
+      root.dataset.renderState = "ready";
+      if (mode === "fallback") {
+        root.classList.add("isReady");
+      } else if (!root.classList.contains("isReady")) {
+        requestAnimationFrame(() => {
+          if (!disposed) root.classList.add("isReady");
+        });
+      }
+      window.dispatchEvent(new CustomEvent(HERO_SCENE_READY_EVENT, {
+        detail: { mode, modelSource: root.dataset.modelSource },
+      }));
+    };
+
+    const tryMarkSceneReady = () => {
+      if (shaderPassesReady && modelReady && stickersReady) notifySceneReady("webgl");
+    };
+
     const setFallback = () => {
       clearReadinessWatchdog();
       root.dataset.renderer = "fallback";
       root.dataset.sceneMode = "fallback";
-      root.dataset.renderState = "ready";
       root.dataset.activeRipples = "0";
       root.dataset.pointerContact = "false";
       root.dataset.flareState = "static";
@@ -828,7 +853,7 @@ export function GlassWordScene() {
       root.dataset.postfxStorage = "none";
       root.dataset.stickerCount = "0";
       root.dataset.stickerState = "static";
-      root.classList.add("isReady");
+      notifySceneReady("fallback");
     };
 
     const startFallbackAnimation = () => {
@@ -836,16 +861,11 @@ export function GlassWordScene() {
       wakeAnimation = () => {};
     };
 
-    const markWebGLReady = (modelSource: HelloModelSource) => {
+    const markModelReady = (modelSource: HelloModelSource) => {
       if (disposed) return;
-      clearReadinessWatchdog();
       root.dataset.modelSource = modelSource;
-      root.dataset.renderState = "ready";
-      if (!root.classList.contains("isReady")) {
-        requestAnimationFrame(() => {
-          if (!disposed) root.classList.add("isReady");
-        });
-      }
+      modelReady = true;
+      tryMarkSceneReady();
     };
 
     readinessWatchdog = window.setTimeout(() => {
@@ -1291,11 +1311,15 @@ export function GlassWordScene() {
           field.resize(camera);
           disposables.push(field);
           root.dataset.stickerState = "falling";
+          stickersReady = true;
+          tryMarkSceneReady();
           wakeAnimation();
         })
         .catch(() => {
           root.dataset.stickerCount = "0";
           root.dataset.stickerState = "failed";
+          stickersReady = true;
+          tryMarkSceneReady();
         });
 
       if (!useCleanroomPreview) {
@@ -1314,18 +1338,18 @@ export function GlassWordScene() {
               sculpture.geometry = downloadedGeometry;
               previousGeometry.dispose();
               updateLocalYRange(downloadedGeometry);
-              markWebGLReady("downloaded-gltf");
+              markModelReady("downloaded-gltf");
               resize();
               activeUntil = performance.now() + 900;
               wakeAnimation();
             } catch {
-              markWebGLReady("generated-path");
+              markModelReady("generated-path");
               wakeAnimation();
             }
           },
           undefined,
           () => {
-            markWebGLReady("generated-path");
+            markModelReady("generated-path");
             wakeAnimation();
           },
         );
@@ -1398,12 +1422,9 @@ export function GlassWordScene() {
         renderer.debug.onShaderError = previousShaderErrorHandler;
         renderer.setRenderTarget(null);
       }
-      const initialModelSource = root.dataset.modelSource;
-      markWebGLReady(
-        initialModelSource === "downloaded-gltf" || initialModelSource === "cleanroom-v2"
-          ? initialModelSource
-          : "generated-path",
-      );
+      shaderPassesReady = true;
+      if (useCleanroomPreview) markModelReady("cleanroom-v2");
+      tryMarkSceneReady();
 
       const handleContextLost = (event: Event) => {
         event.preventDefault();

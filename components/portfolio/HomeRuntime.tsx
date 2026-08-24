@@ -1,9 +1,17 @@
 "use client";
 
 import { ReactLenis } from "lenis/react";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+
+import styles from "./HomeRuntime.module.css";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const HERO_SCENE_READY_EVENT = "hero-scene-ready";
+const LOADER_MINIMUM_MS = 600;
+const LOADER_EXIT_MS = 680;
+const LOADER_SAFETY_TIMEOUT_MS = 9_000;
+
+type LoaderPhase = "loading" | "leaving" | "hidden";
 
 function clamp01(value: number) {
   return Math.min(1, Math.max(0, value));
@@ -25,11 +33,55 @@ function subscribe(onChange: () => void) {
 }
 
 export function HomeRuntime({ children }: { children: ReactNode }) {
+  const [loaderPhase, setLoaderPhase] = useState<LoaderPhase>("loading");
   const reducedMotion = useSyncExternalStore(
     subscribe,
     () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
     () => true,
   );
+
+  useEffect(() => {
+    const documentElement = document.documentElement;
+    const previousOverflow = documentElement.style.overflow;
+    const startedAt = performance.now();
+    let releaseStarted = false;
+    let revealTimer = 0;
+    let removeTimer = 0;
+
+    documentElement.style.overflow = "hidden";
+    documentElement.dataset.portfolioLoading = "true";
+
+    const unlockPage = () => {
+      documentElement.style.overflow = previousOverflow;
+      delete documentElement.dataset.portfolioLoading;
+    };
+
+    const releaseLoader = () => {
+      if (releaseStarted) return;
+      releaseStarted = true;
+      const remainingMinimum = Math.max(0, LOADER_MINIMUM_MS - (performance.now() - startedAt));
+      revealTimer = window.setTimeout(() => {
+        setLoaderPhase("leaving");
+        removeTimer = window.setTimeout(() => {
+          setLoaderPhase("hidden");
+          unlockPage();
+        }, LOADER_EXIT_MS);
+      }, remainingMinimum);
+    };
+
+    const scene = document.querySelector<HTMLElement>(".glassScene");
+    if (scene?.dataset.renderState === "ready") releaseLoader();
+    window.addEventListener(HERO_SCENE_READY_EVENT, releaseLoader);
+    const safetyTimer = window.setTimeout(releaseLoader, LOADER_SAFETY_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(removeTimer);
+      window.clearTimeout(safetyTimer);
+      window.removeEventListener(HERO_SCENE_READY_EVENT, releaseLoader);
+      unlockPage();
+    };
+  }, []);
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>("[data-home-root]");
@@ -120,9 +172,7 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
     };
   }, [reducedMotion]);
 
-  if (reducedMotion) return children;
-
-  return (
+  const content = reducedMotion ? children : (
     <ReactLenis
       root
       options={{
@@ -136,5 +186,33 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
     >
       {children}
     </ReactLenis>
+  );
+
+  return (
+    <>
+      {loaderPhase !== "hidden" ? (
+        <div
+          className={styles.loader}
+          data-state={loaderPhase}
+          role="status"
+          aria-live="polite"
+          aria-label="Loading portfolio"
+        >
+          <div className={styles.loaderFrame}>
+            <div className={styles.loaderTopline}>
+              <span>HIMANSHU.KUMAR</span>
+              <span>PORTFOLIO / 2026</span>
+            </div>
+            <div className={styles.loaderCenter}>
+              <span className={styles.loaderMark} aria-hidden="true">HK</span>
+              <p>Preparing the portfolio</p>
+              <div className={styles.loaderTrack} aria-hidden="true"><span /></div>
+              <small>3D scene · interaction · selected work</small>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {content}
+    </>
   );
 }

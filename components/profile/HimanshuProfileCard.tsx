@@ -1,10 +1,8 @@
 "use client";
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-
-import RippleDistortion from "@/components/effects/RippleDistortion";
 
 import styles from "./HimanshuProfileCard.module.css";
 
@@ -35,40 +33,6 @@ export type HimanshuProfileCardProps = {
 const DEFAULT_AVATAR = "/himanshu-kumar-portrait-1800.jpeg";
 const SETTLE_THRESHOLD = 0.015;
 
-type RippleMode = "off" | "low" | "medium";
-let cachedRippleWebGLSupport: boolean | undefined;
-
-function canUseRippleWebGL() {
-  if (cachedRippleWebGLSupport !== undefined) return cachedRippleWebGLSupport;
-  try {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-    cachedRippleWebGLSupport = Boolean(context);
-    context?.getExtension("WEBGL_lose_context")?.loseContext();
-  } catch {
-    cachedRippleWebGLSupport = false;
-  }
-  return cachedRippleWebGLSupport;
-}
-
-function getRippleMode(): RippleMode {
-  if (typeof window === "undefined") return "off";
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)").matches;
-  if (reducedMotion || coarsePointer || !canUseRippleWebGL()) return "off";
-  return window.matchMedia("(min-width: 1100px)").matches ? "medium" : "low";
-}
-
-function subscribeToRippleMode(onStoreChange: () => void) {
-  const queries = [
-    window.matchMedia("(prefers-reduced-motion: reduce)"),
-    window.matchMedia("(hover: none), (pointer: coarse)"),
-    window.matchMedia("(min-width: 1100px)"),
-  ];
-  queries.forEach((query) => query.addEventListener("change", onStoreChange));
-  return () => queries.forEach((query) => query.removeEventListener("change", onStoreChange));
-}
-
 export default function HimanshuProfileCard({
   className = "",
   name = "Himanshu Kumar",
@@ -90,8 +54,6 @@ export default function HimanshuProfileCard({
   const currentRef = useRef({ x: 0, y: 0 });
   const targetRef = useRef({ x: 0, y: 0 });
   const [imageFailed, setImageFailed] = useState(false);
-  const [rippleInView, setRippleInView] = useState(false);
-  const rippleMode = useSyncExternalStore<RippleMode>(subscribeToRippleMode, getRippleMode, () => "off");
 
   const applyTilt = useCallback((x: number, y: number) => {
     const wrapper = wrapperRef.current;
@@ -175,25 +137,6 @@ export default function HimanshuProfileCard({
     };
   }, [applyTilt, stopAnimation]);
 
-  useEffect(() => {
-    const node = wrapperRef.current;
-    if (!node || rippleMode === "off") return;
-
-    let intersects = false;
-    const sync = () => setRippleInView(intersects && document.visibilityState === "visible");
-    const observer = new IntersectionObserver(([entry]) => {
-      intersects = Boolean(entry?.isIntersecting && entry.intersectionRatio > 0);
-      sync();
-    }, { threshold: [0, 0.01] });
-
-    observer.observe(node);
-    document.addEventListener("visibilitychange", sync);
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("visibilitychange", sync);
-    };
-  }, [rippleMode]);
-
   const cardStyle: CardStyle = {
     "--pointer-x": "50%",
     "--pointer-y": "50%",
@@ -223,38 +166,14 @@ export default function HimanshuProfileCard({
               HK
             </div>
           ) : (
-            <>
-              <Image
-                className={styles.portrait}
-                src={avatarUrl}
-                alt={`Portrait of ${name}`}
-                fill
-                sizes="(max-width: 390px) 100vw, 390px"
-                onError={() => setImageFailed(true)}
-              />
-              {rippleMode !== "off" && rippleInView ? (
-                <RippleDistortion
-                  className={styles.ripplePortrait}
-                  src={avatarUrl}
-                  enabled
-                  grayscale={false}
-                  quality={rippleMode}
-                  brushSize={78}
-                  strength={0.06}
-                  swirl={0.18}
-                  rings={2}
-                  spread={2.5}
-                  fade={0.7}
-                  spacing={28}
-                  dispersion={0.008}
-                  glint={0.1}
-                  tint="#75d6bb"
-                  tintAmount={0.045}
-                  highlightColor="#f7f2e8"
-                  trigger="hover"
-                />
-              ) : null}
-            </>
+            <Image
+              className={styles.portrait}
+              src={avatarUrl}
+              alt={`Portrait of ${name}`}
+              fill
+              sizes="(max-width: 390px) 100vw, 390px"
+              onError={() => setImageFailed(true)}
+            />
           )}
           {!imageFailed ? (
             <Image
