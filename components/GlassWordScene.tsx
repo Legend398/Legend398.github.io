@@ -177,7 +177,7 @@ const GLASS_FRAGMENT_SHADER = `
     float cursorAlong = dot(cursorDelta, cursorDirection) * 0.84;
     float cursorAcross = dot(cursorDelta, cursorTangent) * 1.12;
     float cursorDistance = length(vec2(cursorAlong, cursorAcross));
-    float normalizedCursorDistance = clamp(cursorDistance / 0.136, 0.0, 1.0);
+    float normalizedCursorDistance = clamp(cursorDistance / 0.1088, 0.0, 1.0);
     float cursorEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedCursorDistance);
     float bubbleDepth = sqrt(max(
       0.0,
@@ -266,7 +266,7 @@ const GLASS_FRAGMENT_SHADER = `
 
     vec2 hoverDelta = uv - uHoverUv;
     hoverDelta.x *= uResolution.x / max(uResolution.y, 1.0);
-    float hoverMask = exp(-dot(hoverDelta, hoverDelta) * 38.0) * uHoverStrength;
+    float hoverMask = exp(-dot(hoverDelta, hoverDelta) * 59.375) * uHoverStrength;
 
     color = adjustSaturation(color, uSaturation);
     color *= uBrightness;
@@ -913,7 +913,6 @@ export function GlassWordScene() {
       camera.position.set(0, 0.08, 7.7);
       const backgroundScene = new THREE.Scene();
       const glassScene = new THREE.Scene();
-      const stickerScene = new THREE.Scene();
       const copyScene = new THREE.Scene();
       const copyCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const raycaster = new THREE.Raycaster();
@@ -1060,7 +1059,7 @@ export function GlassWordScene() {
             }
             vec2 pointerDelta = uv - uPointer;
             pointerDelta.x *= aspect;
-            float cursorHalo = exp(-dot(pointerDelta, pointerDelta) * 143.75);
+            float cursorHalo = exp(-dot(pointerDelta, pointerDelta) * 224.609375);
             color += vec3(0.16, 0.24, 0.28) * fluid * 0.01;
             color += vec3(1.0, 0.97, 0.9) * cursorHalo * 0.014;
 
@@ -1261,9 +1260,7 @@ export function GlassWordScene() {
         const targetWidth = Math.max(1, Math.round(unboundedWidth * budgetScale));
         const targetHeight = Math.max(1, Math.round(unboundedHeight * budgetScale));
         sceneTarget.setSize(targetWidth, targetHeight);
-        compositeTarget.samples = narrow
-          ? 0
-          : Math.min(2, renderer.capabilities.maxSamples);
+        compositeTarget.samples = 0;
         compositeTarget.setSize(targetWidth, targetHeight);
         fluidTarget.setSize(targetWidth, targetHeight);
         glassResolution.set(targetWidth, targetHeight);
@@ -1313,7 +1310,7 @@ export function GlassWordScene() {
             return;
           }
           stickerField = field;
-          stickerScene.add(field.mesh);
+          backgroundScene.add(field.mesh);
           field.resize(camera);
           disposables.push(field);
           root.dataset.stickerState = "falling";
@@ -1398,8 +1395,6 @@ export function GlassWordScene() {
         );
         flarePass.setTailColor(glassMaterial.uniforms.uTintAccent.value);
         flarePass.render(renderer, finalTexture, flareVisible, fluidVisible);
-        renderer.clearDepth();
-        renderer.render(stickerScene, camera);
       };
 
       const gl = renderer.getContext();
