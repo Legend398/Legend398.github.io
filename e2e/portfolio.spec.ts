@@ -335,6 +335,45 @@ test("slow sticker textures do not block the downloaded WebGL hero", async ({ pa
   }
 });
 
+test("the first three sticker textures start falling while the rest continue streaming", async ({ page }) => {
+  const firstStickerBatch = [
+    "holographic-floppy-comet.png",
+    "warped-404.png",
+    "printed-naughty-ghost.png",
+  ];
+  let releaseRemainingStickers: (() => void) | undefined;
+  const remainingStickerGate = new Promise<void>((resolve) => {
+    releaseRemainingStickers = resolve;
+  });
+
+  await page.route("**/sticker_img/original/*.png", async (route) => {
+    if (firstStickerBatch.some((name) => route.request().url().endsWith(name))) {
+      await route.continue();
+      return;
+    }
+    await remainingStickerGate;
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 1_440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+
+  try {
+    const glass = page.locator('[data-v8-hero] [data-glass-stage]');
+    await expect(glass).toHaveAttribute("data-render-state", "ready");
+    await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
+    await expect(glass).toHaveAttribute("data-stickers-loaded", "3");
+    await expect(glass).toHaveAttribute("data-sticker-state", "streaming");
+    await expect.poll(async () => Number(await glass.getAttribute("data-visible-stickers"))).toBeGreaterThan(0);
+
+    releaseRemainingStickers?.();
+    await expect(glass).toHaveAttribute("data-stickers-loaded", "14");
+    await expect(glass).toHaveAttribute("data-sticker-state", "falling");
+  } finally {
+    releaseRemainingStickers?.();
+  }
+});
+
 test("original hello preview remains separate from the current model", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });

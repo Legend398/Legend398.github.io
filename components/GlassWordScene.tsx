@@ -14,6 +14,7 @@ type HelloModelSource = "downloaded-gltf" | "cleanroom-v2";
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
 const STICKER_COUNT = 14;
+const INITIAL_STICKER_BATCH = 3;
 const HERO_SCENE_READY_EVENT = "hero-scene-ready";
 const STICKER_CAPACITY = 84;
 const STICKER_COLUMNS = 4;
@@ -357,6 +358,7 @@ type StickerParticle = {
 };
 
 type StickerField = {
+  addSticker: (textureIndex: number, image: HTMLImageElement) => void;
   burst: (elapsed: number) => void;
   dispose: () => void;
   mesh: THREE.InstancedMesh;
@@ -370,8 +372,7 @@ function loadStickerImage(path: string) {
   });
 }
 
-async function createStickerField(camera: THREE.PerspectiveCamera): Promise<StickerField> {
-  const images = await Promise.all(STICKER_PATHS.map(loadStickerImage));
+function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   const atlasCanvas = document.createElement("canvas");
   const cellSize = 512;
   atlasCanvas.width = STICKER_COLUMNS * cellSize;
@@ -379,27 +380,10 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
   const context = atlasCanvas.getContext("2d");
   if (!context) throw new Error("Could not create the sticker atlas");
 
-  images.forEach((image, index) => {
-    const column = index % STICKER_COLUMNS;
-    const row = Math.floor(index / STICKER_COLUMNS);
-    const inset = 18;
-    const maxWidth = cellSize - inset * 2;
-    const maxHeight = cellSize - inset * 2;
-    const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
-    const width = image.naturalWidth * scale;
-    const height = image.naturalHeight * scale;
-    context.drawImage(
-      image,
-      column * cellSize + (cellSize - width) / 2,
-      row * cellSize + (cellSize - height) / 2,
-      width,
-      height,
-    );
-  });
-
   const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
   atlasTexture.colorSpace = THREE.SRGBColorSpace;
-  atlasTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  atlasTexture.generateMipmaps = false;
+  atlasTexture.minFilter = THREE.LinearFilter;
   atlasTexture.magFilter = THREE.LinearFilter;
   atlasTexture.needsUpdate = true;
 
@@ -426,7 +410,7 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
   mesh.renderOrder = 5;
 
   const particles: StickerParticle[] = Array.from({ length: STICKER_CAPACITY }, (_, index) => ({
-    active: index < STICKER_COUNT,
+    active: false,
     emitAt: 0,
     fallDistance: 1,
     fallSpeed: 1,
@@ -437,7 +421,7 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
     rotationSpeed: 0,
     size: 0,
     startY: 0,
-    textureIndex: index % STICKER_COUNT,
+    textureIndex: 0,
     windAmplitude: 0,
     windPhase: 0,
     x: 0,
@@ -448,6 +432,8 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
   let halfHeight = 3;
   let halfWidth = 5;
   let nextBurstSlot = STICKER_COUNT;
+  const loadedTextureIndices: number[] = [];
+  const loadedTextureSet = new Set<number>();
 
   const setUvRect = (index: number, textureIndex: number) => {
     const column = textureIndex % STICKER_COLUMNS;
@@ -459,7 +445,16 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
     uvRects[offset + 3] = 1 / STICKER_ROWS;
   };
 
-  const resetNormal = (particle: StickerParticle, index: number, initial: boolean) => {
+  const getRandomLoadedTexture = () => (
+    loadedTextureIndices[Math.floor(Math.random() * loadedTextureIndices.length)] ?? 0
+  );
+
+  const resetNormal = (
+    particle: StickerParticle,
+    index: number,
+    initial: boolean,
+    initialTextureIndex?: number,
+  ) => {
     const travel = halfHeight * 5.2;
     particle.active = true;
     particle.isOneShot = false;
@@ -477,7 +472,9 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
     particle.size = THREE.MathUtils.randFloat(0.52, 0.76);
     particle.windPhase = Math.random() * Math.PI * 2;
     particle.windAmplitude = THREE.MathUtils.randFloat(0.12, 0.38);
-    particle.textureIndex = initial ? index % STICKER_COUNT : Math.floor(Math.random() * STICKER_COUNT);
+    particle.textureIndex = initial
+      ? (initialTextureIndex ?? getRandomLoadedTexture())
+      : getRandomLoadedTexture();
     setUvRect(index, particle.textureIndex);
   };
 
@@ -488,14 +485,45 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
   };
 
   resize(camera);
-  particles.slice(0, STICKER_COUNT).forEach((particle, index) => resetNormal(particle, index, true));
   particles.forEach((particle, index) => setUvRect(index, particle.textureIndex));
   uvRectAttribute.needsUpdate = true;
 
+  const addSticker = (textureIndex: number, image: HTMLImageElement) => {
+    if (
+      textureIndex < 0
+      || textureIndex >= STICKER_COUNT
+      || loadedTextureSet.has(textureIndex)
+    ) return;
+
+    const column = textureIndex % STICKER_COLUMNS;
+    const row = Math.floor(textureIndex / STICKER_COLUMNS);
+    const inset = 18;
+    const maxWidth = cellSize - inset * 2;
+    const maxHeight = cellSize - inset * 2;
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const scale = Math.min(maxWidth / imageWidth, maxHeight / imageHeight);
+    const width = imageWidth * scale;
+    const height = imageHeight * scale;
+    context.drawImage(
+      image,
+      column * cellSize + (cellSize - width) / 2,
+      row * cellSize + (cellSize - height) / 2,
+      width,
+      height,
+    );
+    atlasTexture.needsUpdate = true;
+    loadedTextureSet.add(textureIndex);
+    loadedTextureIndices.push(textureIndex);
+    resetNormal(particles[textureIndex], textureIndex, true, textureIndex);
+    uvRectAttribute.needsUpdate = true;
+  };
+
   const burst = (elapsed: number) => {
+    if (loadedTextureIndices.length === 0) return;
     const horizontalPadding = Math.min(halfWidth * 0.1, 0.34);
     const verticalPadding = Math.min(halfHeight * 0.1, 0.28);
-    for (let index = 0; index < STICKER_COUNT; index += 1) {
+    for (let index = 0; index < loadedTextureIndices.length; index += 1) {
       const slot = nextBurstSlot;
       nextBurstSlot += 1;
       if (nextBurstSlot >= STICKER_CAPACITY) nextBurstSlot = STICKER_COUNT;
@@ -521,7 +549,7 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
       particle.size = THREE.MathUtils.randFloat(0.56, 0.82);
       particle.windPhase = Math.random() * Math.PI * 2;
       particle.windAmplitude = THREE.MathUtils.randFloat(0.22, 0.66);
-      particle.textureIndex = Math.floor(Math.random() * STICKER_COUNT);
+      particle.textureIndex = getRandomLoadedTexture();
       particle.opacity = 0;
       setUvRect(slot, particle.textureIndex);
     }
@@ -572,6 +600,7 @@ async function createStickerField(camera: THREE.PerspectiveCamera): Promise<Stic
   };
 
   return {
+    addSticker,
     burst,
     dispose: () => {
       mesh.removeFromParent();
@@ -1306,28 +1335,75 @@ export function GlassWordScene() {
 
       root.dataset.shimmerState = "animated";
       root.dataset.stickerCount = String(STICKER_COUNT);
+      root.dataset.stickersLoaded = "0";
       root.dataset.stickerState = "deferred";
       startStickerLoad = () => {
         if (disposed || contextLost || stickerLoadStarted) return;
         stickerLoadStarted = true;
         root.dataset.stickerState = "loading";
-        void createStickerField(camera)
-          .then((field) => {
-            if (disposed || contextLost) {
-              field.dispose();
-              return;
-            }
-            stickerField = field;
-            backgroundScene.add(field.mesh);
-            field.resize(camera);
-            disposables.push(field);
-            root.dataset.stickerState = "falling";
-            wakeAnimation();
-          })
-          .catch(() => {
+        let completedStickerRequests = 0;
+        const loadedStickers = new Map<number, HTMLImageElement>();
+        const appliedStickers = new Set<number>();
+
+        const updateStickerState = () => {
+          root.dataset.stickersLoaded = String(loadedStickers.size);
+          if (!stickerField) return;
+          root.dataset.stickerState = completedStickerRequests === STICKER_COUNT
+            ? "falling"
+            : "streaming";
+        };
+
+        const startStickerField = (force = false) => {
+          if (
+            stickerField
+            || disposed
+            || contextLost
+            || (!force && loadedStickers.size < INITIAL_STICKER_BATCH)
+          ) return;
+
+          if (loadedStickers.size === 0) {
             root.dataset.stickerCount = "0";
             root.dataset.stickerState = "failed";
+            return;
+          }
+
+          const field = createStickerField(camera);
+          stickerField = field;
+          backgroundScene.add(field.mesh);
+          field.resize(camera);
+          disposables.push(field);
+          loadedStickers.forEach((image, textureIndex) => {
+            field.addSticker(textureIndex, image);
+            appliedStickers.add(textureIndex);
           });
+          updateStickerState();
+          wakeAnimation();
+        };
+
+        const settleStickerRequest = () => {
+          completedStickerRequests += 1;
+          startStickerField(completedStickerRequests === STICKER_COUNT);
+          updateStickerState();
+        };
+
+        STICKER_PATHS.forEach((path, textureIndex) => {
+          void loadStickerImage(path)
+            .then((image) => {
+              if (disposed || contextLost) return;
+              loadedStickers.set(textureIndex, image);
+              startStickerField();
+              if (stickerField && !appliedStickers.has(textureIndex)) {
+                stickerField.addSticker(textureIndex, image);
+                appliedStickers.add(textureIndex);
+                wakeAnimation();
+              }
+              settleStickerRequest();
+            })
+            .catch(() => {
+              if (disposed || contextLost) return;
+              settleStickerRequest();
+            });
+        });
       };
 
       if (!useCleanroomPreview) {
@@ -1750,6 +1826,7 @@ export function GlassWordScene() {
       data-shimmer-state="loading"
       data-sticker-count="0"
       data-sticker-state="loading"
+      data-stickers-loaded="0"
       data-visible-stickers="0"
       ref={rootRef}
     >
