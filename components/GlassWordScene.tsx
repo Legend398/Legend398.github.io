@@ -1300,6 +1300,9 @@ export function GlassWordScene() {
 
       if (!useCleanroomPreview) {
         const modelLoader = new GLTFLoader();
+        // Third-party asset credit: the local hello.gltf model is attributed to
+        // Haoqi Wen (https://haoqi.design/). Attribution does not imply
+        // affiliation, endorsement, or a licence to redistribute the asset.
         modelLoader.load(
           "/model/hello.gltf",
           (gltf) => {
