@@ -23,7 +23,7 @@ const jsonLd = {
 export default function HomePage() {
   return (
     <HomeRuntime>
-      <main className={styles.home} id="main-content">
+      <main className={styles.home} id="main-content" data-home-root>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <section className={`${styles.studioHero} ${styles.kineticHero}`} aria-labelledby="hero-title" data-v8-hero>
           <GlassWordScene />
@@ -51,10 +51,16 @@ export default function HomePage() {
         </section>
 
         <section className={styles.about} id="about" aria-labelledby="about-title">
+          <div className={styles.opticalRelay} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <div className={`${styles.sectionFrame} ${styles.aboutGrid}`}>
             <div className={styles.profileCardWrap}>
               <HimanshuProfileCard
                 behindGlowEnabled
+                handle=""
                 showIconPattern={false}
                 showUserInfo
               />
