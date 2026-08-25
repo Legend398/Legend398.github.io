@@ -361,6 +361,7 @@ type StickerField = {
   addSticker: (textureIndex: number, image: HTMLImageElement) => void;
   burst: (elapsed: number) => void;
   dispose: () => void;
+  flushStickers: () => number;
   mesh: THREE.InstancedMesh;
   resize: (camera: THREE.PerspectiveCamera) => void;
   update: (elapsed: number, delta: number) => number;
@@ -374,7 +375,7 @@ function loadStickerImage(path: string) {
 
 function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   const atlasCanvas = document.createElement("canvas");
-  const cellSize = 512;
+  const cellSize = 256;
   atlasCanvas.width = STICKER_COLUMNS * cellSize;
   atlasCanvas.height = STICKER_ROWS * cellSize;
   const context = atlasCanvas.getContext("2d");
@@ -382,8 +383,8 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
 
   const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
   atlasTexture.colorSpace = THREE.SRGBColorSpace;
-  atlasTexture.generateMipmaps = false;
-  atlasTexture.minFilter = THREE.LinearFilter;
+  atlasTexture.generateMipmaps = true;
+  atlasTexture.minFilter = THREE.LinearMipmapLinearFilter;
   atlasTexture.magFilter = THREE.LinearFilter;
   atlasTexture.needsUpdate = true;
 
@@ -434,6 +435,7 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   let nextBurstSlot = STICKER_COUNT;
   const loadedTextureIndices: number[] = [];
   const loadedTextureSet = new Set<number>();
+  const pendingTextureIndices: number[] = [];
 
   const setUvRect = (index: number, textureIndex: number) => {
     const column = textureIndex % STICKER_COLUMNS;
@@ -512,11 +514,20 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
       width,
       height,
     );
-    atlasTexture.needsUpdate = true;
     loadedTextureSet.add(textureIndex);
-    loadedTextureIndices.push(textureIndex);
-    resetNormal(particles[textureIndex], textureIndex, true, textureIndex);
+    pendingTextureIndices.push(textureIndex);
+  };
+
+  const flushStickers = () => {
+    if (pendingTextureIndices.length === 0) return loadedTextureIndices.length;
+    pendingTextureIndices.forEach((textureIndex) => {
+      loadedTextureIndices.push(textureIndex);
+      resetNormal(particles[textureIndex], textureIndex, true, textureIndex);
+    });
+    pendingTextureIndices.length = 0;
+    atlasTexture.needsUpdate = true;
     uvRectAttribute.needsUpdate = true;
+    return loadedTextureIndices.length;
   };
 
   const burst = (elapsed: number) => {
@@ -608,6 +619,7 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
       material.dispose();
       atlasTexture.dispose();
     },
+    flushStickers,
     mesh,
     resize,
     update,
@@ -1334,6 +1346,7 @@ export function GlassWordScene() {
       resize();
 
       root.dataset.shimmerState = "animated";
+      root.dataset.activeStickers = "0";
       root.dataset.stickerCount = String(STICKER_COUNT);
       root.dataset.stickersLoaded = "0";
       root.dataset.stickerState = "deferred";
@@ -1376,6 +1389,7 @@ export function GlassWordScene() {
             field.addSticker(textureIndex, image);
             appliedStickers.add(textureIndex);
           });
+          root.dataset.activeStickers = String(field.flushStickers());
           updateStickerState();
           wakeAnimation();
         };
@@ -1383,6 +1397,12 @@ export function GlassWordScene() {
         const settleStickerRequest = () => {
           completedStickerRequests += 1;
           startStickerField(completedStickerRequests === STICKER_COUNT);
+          if (completedStickerRequests === STICKER_COUNT) {
+            if (stickerField) {
+              root.dataset.activeStickers = String(stickerField.flushStickers());
+            }
+            wakeAnimation();
+          }
           updateStickerState();
         };
 
@@ -1395,7 +1415,6 @@ export function GlassWordScene() {
               if (stickerField && !appliedStickers.has(textureIndex)) {
                 stickerField.addSticker(textureIndex, image);
                 appliedStickers.add(textureIndex);
-                wakeAnimation();
               }
               settleStickerRequest();
             })
@@ -1794,6 +1813,7 @@ export function GlassWordScene() {
       aria-hidden="true"
       className="glassScene"
       data-active-ripples="0"
+      data-active-stickers="0"
       data-camera-parallax-x="0"
       data-camera-parallax-y="0"
       data-cursor-field-x="0.5"

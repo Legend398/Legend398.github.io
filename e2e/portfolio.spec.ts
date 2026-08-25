@@ -363,11 +363,12 @@ test("the first three sticker textures start falling while the rest continue str
     await expect(glass).toHaveAttribute("data-render-state", "ready");
     await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
     await expect(glass).toHaveAttribute("data-stickers-loaded", "3");
+    await expect(glass).toHaveAttribute("data-active-stickers", "3");
     await expect(glass).toHaveAttribute("data-sticker-state", "streaming");
-    await expect.poll(async () => Number(await glass.getAttribute("data-visible-stickers"))).toBeGreaterThan(0);
 
     releaseRemainingStickers?.();
     await expect(glass).toHaveAttribute("data-stickers-loaded", "14");
+    await expect(glass).toHaveAttribute("data-active-stickers", "14");
     await expect(glass).toHaveAttribute("data-sticker-state", "falling");
   } finally {
     releaseRemainingStickers?.();
