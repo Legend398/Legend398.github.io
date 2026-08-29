@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Azeret_Mono, Newsreader, Schibsted_Grotesk } from "next/font/google";
+import Script from "next/script";
 import { SiteHeader } from "@/components/SiteHeader";
 import { profile } from "@/lib/portfolio";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
+
+const googleAnalyticsId = "G-E16DF8VNBS";
 
 const display = Newsreader({
   subsets: ["latin"],
@@ -68,6 +71,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${googleAnalyticsId}');
+          `}
+        </Script>
         <a className="skipLink" href="#main-content">
           Skip to main content
         </a>
