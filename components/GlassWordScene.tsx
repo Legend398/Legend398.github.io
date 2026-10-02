@@ -3,19 +3,18 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
-import { SCULPTED_WORD_PATH } from "@/components/SculptedWordPath";
-import { createCleanroomHelloGeometry } from "@/components/hero/CleanroomHelloGeometry";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { WELCOME_PATH, WELCOME_VIEWBOX } from "@/components/hero/WelcomePath";
 import { HeroFlarePass, HeroFluidPass } from "@/components/hero/HeroPostProcessing";
 
-type HelloModelSource = "downloaded-gltf" | "cleanroom-v2";
+type WordModelSource = "welcome-original";
 
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
 const STICKER_COUNT = 14;
 const INITIAL_STICKER_BATCH = 3;
 const HERO_SCENE_READY_EVENT = "hero-scene-ready";
+const MODEL_LOAD_TIMEOUT_MS = 10_000;
 const STICKER_CAPACITY = 84;
 const STICKER_COLUMNS = 4;
 const STICKER_ROWS = 4;
@@ -626,40 +625,6 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   };
 }
 
-function createSculptedGeometry() {
-  const svg = new SVGLoader().parse(
-    `<svg xmlns="http://www.w3.org/2000/svg"><path fill="#fff" fill-rule="evenodd" d="${SCULPTED_WORD_PATH}"/></svg>`,
-  );
-  const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path));
-  const rawGeometry = new THREE.ExtrudeGeometry(shapes, {
-    depth: 66,
-    steps: 1,
-    curveSegments: 12,
-    bevelEnabled: true,
-    bevelThickness: 20,
-    bevelSize: 18,
-    bevelOffset: 0,
-    bevelSegments: 12,
-  });
-
-  rawGeometry.center();
-  rawGeometry.rotateX(Math.PI);
-  rawGeometry.deleteAttribute("normal");
-  rawGeometry.deleteAttribute("uv");
-  const geometry = mergeVertices(rawGeometry, 0.001);
-  rawGeometry.dispose();
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  const width = geometry.boundingBox
-    ? geometry.boundingBox.max.x - geometry.boundingBox.min.x
-    : 1;
-  const scale = 6.35 / Math.max(width, 1);
-  geometry.scale(scale, scale, scale);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
 function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   scene.updateMatrixWorld(true);
   const parts: THREE.BufferGeometry[] = [];
@@ -672,7 +637,7 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   });
 
   if (parts.length === 0) {
-    throw new Error("The downloaded hello model has no mesh geometry");
+    throw new Error("The Welcome model has no mesh geometry");
   }
 
   let geometry: THREE.BufferGeometry;
@@ -681,7 +646,7 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   } else {
     const merged = mergeGeometries(parts, false);
     parts.forEach((part) => part.dispose());
-    if (!merged) throw new Error("The downloaded hello model could not be merged");
+    if (!merged) throw new Error("The Welcome model could not be merged");
     geometry = merged;
   }
 
@@ -698,10 +663,6 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   return geometry;
 }
 
-function createDownloadedHelloGeometry(scene: THREE.Object3D) {
-  return createDownloadedGeometry(scene, 6.35);
-}
-
 export function GlassWordScene() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -714,6 +675,8 @@ export function GlassWordScene() {
     let frame = 0;
     let disposed = false;
     let contextLost = false;
+    let fallbackActive = false;
+    let modelLoadTimer = 0;
     let heroVisible = true;
     let pageVisible = !document.hidden;
     let activeUntil = performance.now() + 160;
@@ -792,7 +755,7 @@ export function GlassWordScene() {
     document.addEventListener("visibilitychange", handleVisibility);
 
     const updatePointer = (event: PointerEvent) => {
-      if (!heroVisible) return;
+      if (!heroVisible || reducedMotion.matches) return;
       const rect = root.getBoundingClientRect();
       const insideHero =
         event.clientX >= rect.left && event.clientX <= rect.right &&
@@ -885,6 +848,12 @@ export function GlassWordScene() {
     };
 
     const setFallback = () => {
+      fallbackActive = true;
+      window.clearTimeout(modelLoadTimer);
+      cancelAnimationFrame(frame);
+      frame = 0;
+      root.style.setProperty("--pointer-x", "0");
+      root.style.setProperty("--pointer-y", "0");
       if (stickerLoadTimer) {
         window.clearTimeout(stickerLoadTimer);
         stickerLoadTimer = 0;
@@ -909,8 +878,9 @@ export function GlassWordScene() {
       wakeAnimation = () => {};
     };
 
-    const markModelReady = (modelSource: HelloModelSource) => {
-      if (disposed) return;
+    const markModelReady = (modelSource: WordModelSource) => {
+      if (disposed || fallbackActive) return;
+      window.clearTimeout(modelLoadTimer);
       root.dataset.modelSource = modelSource;
       root.dataset.modelState = "ready";
       modelReady = true;
@@ -918,16 +888,24 @@ export function GlassWordScene() {
     };
 
     const markModelFailed = () => {
-      if (disposed) return;
+      if (disposed || fallbackActive) return;
       root.dataset.modelSource = "failed";
       root.dataset.modelState = "failed";
+      startFallbackAnimation();
     };
+
+    const handleMotionPreference = () => {
+      if (reducedMotion.matches) startFallbackAnimation();
+    };
+    reducedMotion.addEventListener("change", handleMotionPreference);
 
     if (reducedMotion.matches) {
       startFallbackAnimation();
       return () => {
         disposed = true;
         window.clearTimeout(stickerLoadTimer);
+        window.clearTimeout(modelLoadTimer);
+        reducedMotion.removeEventListener("change", handleMotionPreference);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1233,14 +1211,7 @@ export function GlassWordScene() {
       };
       syncThemeColors();
 
-      const helloVariant = new URLSearchParams(window.location.search).get("hello");
-      const useCleanroomPreview = helloVariant === "cleanroom-v2";
-      root.dataset.helloVariant = useCleanroomPreview ? "cleanroom-v2" : "current";
-
-      let activeGeometry = useCleanroomPreview
-        ? createCleanroomHelloGeometry()
-        : createSculptedGeometry();
-      if (useCleanroomPreview) root.dataset.modelSource = "cleanroom-v2";
+      let activeGeometry = new THREE.BufferGeometry();
       const updateLocalYRange = (geometry: THREE.BufferGeometry) => {
         geometry.computeBoundingBox();
         if (!geometry.boundingBox) return;
@@ -1249,7 +1220,6 @@ export function GlassWordScene() {
           geometry.boundingBox.max.y,
         );
       };
-      updateLocalYRange(activeGeometry);
       const sculpture = new THREE.Mesh(activeGeometry, glassMaterial);
       sculpture.renderOrder = 2;
       const heroGroup = new THREE.Group();
@@ -1327,11 +1297,11 @@ export function GlassWordScene() {
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld(true);
         const viewHalfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * camera.position.z;
-        const desiredHelloWidth = width * 0.78;
-        const desiredHelloWorldWidth = desiredHelloWidth * (viewHalfHeight * 2) / height;
+        const desiredWordWidth = width * 0.82;
+        const desiredWordWorldWidth = desiredWordWidth * (viewHalfHeight * 2) / height;
         baseScale = narrow
           ? 0.39
-          : THREE.MathUtils.clamp(desiredHelloWorldWidth / 6.35, 0.82, 1.12);
+          : THREE.MathUtils.clamp(desiredWordWorldWidth / 6.35, 0.82, 1.16);
         verticalScale = 1;
         const shortViewportLift = narrow
           ? 0
@@ -1425,28 +1395,37 @@ export function GlassWordScene() {
         });
       };
 
-      if (!useCleanroomPreview) {
+      {
         const modelLoader = new GLTFLoader();
-        // Third-party asset credit: the local hello.gltf model is attributed to
-        // Haoqi Wen (https://haoqi.design/). Attribution does not imply
-        // affiliation, endorsement, or a licence to redistribute the asset.
+        modelLoadTimer = window.setTimeout(markModelFailed, MODEL_LOAD_TIMEOUT_MS);
         modelLoader.load(
-          "/model/hello.gltf",
+          "/model/welcome.glb",
           (gltf) => {
-            if (disposed) return;
+            const releaseSource = () => gltf.scene.traverse((child) => {
+              if (!(child instanceof THREE.Mesh)) return;
+              child.geometry.dispose();
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((material: THREE.Material) => material.dispose());
+            });
+            if (disposed || fallbackActive) {
+              releaseSource();
+              return;
+            }
             try {
-              const downloadedGeometry = createDownloadedHelloGeometry(gltf.scene);
+              const downloadedGeometry = createDownloadedGeometry(gltf.scene, 6.35);
               const previousGeometry = activeGeometry;
               activeGeometry = downloadedGeometry;
               sculpture.geometry = downloadedGeometry;
               previousGeometry.dispose();
               updateLocalYRange(downloadedGeometry);
-              markModelReady("downloaded-gltf");
+              markModelReady("welcome-original");
               resize();
               activeUntil = performance.now() + 900;
               wakeAnimation();
             } catch {
               markModelFailed();
+            } finally {
+              releaseSource();
             }
           },
           undefined,
@@ -1524,7 +1503,6 @@ export function GlassWordScene() {
         renderer.setRenderTarget(null);
       }
       shaderPassesReady = true;
-      if (useCleanroomPreview) markModelReady("cleanroom-v2");
       tryMarkSceneReady();
 
       const handleContextLost = (event: Event) => {
@@ -1539,7 +1517,7 @@ export function GlassWordScene() {
       let scrollFrame = 0;
       const updateScroll = () => {
         scrollFrame = 0;
-        if (!hero || reducedMotion.matches) return;
+        if (!hero || reducedMotion.matches || fallbackActive) return;
         const rect = hero.getBoundingClientRect();
         scrollProgress = THREE.MathUtils.clamp(-rect.top / Math.max(rect.height * 0.82, 1), 0, 1);
         hero.style.setProperty("--hero-progress", scrollProgress.toFixed(4));
@@ -1583,7 +1561,7 @@ export function GlassWordScene() {
 
       const animate = () => {
         frame = 0;
-        if (disposed || contextLost || !renderer) return;
+        if (disposed || contextLost || fallbackActive || !renderer) return;
         if (heroVisible && !handoffActive) {
           const elapsed = reducedMotion.matches ? 0 : clock.getElapsedTime();
           const rawDelta = reducedMotion.matches ? 0 : Math.max(0, elapsed - previousElapsed);
@@ -1762,7 +1740,7 @@ export function GlassWordScene() {
       wakeAnimation = () => {
         const ambientMotionActive = root.dataset.shimmerState === "animated" || root.dataset.stickerState === "falling";
         if (
-          !handoffActive && !frame && !disposed && !contextLost && pageVisible && heroVisible &&
+          !handoffActive && !frame && !disposed && !contextLost && !fallbackActive && pageVisible && heroVisible &&
           (ambientMotionActive || performance.now() < activeUntil)
         ) {
           frame = requestAnimationFrame(animate);
@@ -1774,6 +1752,8 @@ export function GlassWordScene() {
       return () => {
         disposed = true;
         window.clearTimeout(stickerLoadTimer);
+        window.clearTimeout(modelLoadTimer);
+        reducedMotion.removeEventListener("change", handleMotionPreference);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1792,6 +1772,8 @@ export function GlassWordScene() {
       return () => {
         disposed = true;
         window.clearTimeout(stickerLoadTimer);
+        window.clearTimeout(modelLoadTimer);
+        reducedMotion.removeEventListener("change", handleMotionPreference);
         cancelAnimationFrame(frame);
         visibilityObserver.disconnect();
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -1824,8 +1806,7 @@ export function GlassWordScene() {
       data-glass-theme="loading"
       data-glass-tint-accent="loading"
       data-glass-tint-base="loading"
-      data-glass-word="hello"
-      data-hello-variant="loading"
+      data-glass-word="Welcome"
       data-light-angle="0"
       data-light-x="4"
       data-light-y="9"
@@ -1852,7 +1833,7 @@ export function GlassWordScene() {
     >
       <canvas ref={canvasRef} />
       <div className="glassFallback" data-glass-fallback>
-          <svg viewBox="0 -980 2180 1080" role="presentation">
+          <svg viewBox={WELCOME_VIEWBOX} role="presentation">
             <defs>
               <linearGradient id="fallback-glass-face" x1="0" y1="0" x2="0.75" y2="1">
                 <stop offset="0" stopColor="var(--hero-glass-tint-base)" stopOpacity="0.78" />
@@ -1867,11 +1848,11 @@ export function GlassWordScene() {
                 <stop offset="1" stopColor="#fff" stopOpacity="0" />
               </linearGradient>
               <clipPath id="fallback-glass-clip">
-                <path d={SCULPTED_WORD_PATH} />
+                <path d={WELCOME_PATH} />
               </clipPath>
             </defs>
-            <path className="glassFallbackDepth" d={SCULPTED_WORD_PATH} />
-            <path className="glassFallbackFace" d={SCULPTED_WORD_PATH} />
+            <path className="glassFallbackDepth" d={WELCOME_PATH} />
+            <path className="glassFallbackFace" d={WELCOME_PATH} />
             <g className="glassFallbackSheen" clipPath="url(#fallback-glass-clip)">
               <rect x="300" y="-1200" width="220" height="1600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 410 -400)" />
               <rect x="1290" y="-1200" width="310" height="1600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 1445 -400)" />

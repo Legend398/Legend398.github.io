@@ -14,8 +14,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:e2e": "next build && playwright test --project=chromium",
-    "verify": "npm run lint && npm run typecheck && npm run test:e2e",
-    "verify:pages": "npm run build:pages && node scripts/verify-pages-export.mjs"
+    "verify": "npm run verify:welcome && npm run lint && npm run typecheck && npm run test:e2e",
+    "verify:pages": "npm run build:pages && node scripts/verify-pages-export.mjs",
+    "build:welcome": "node scripts/build-welcome.mjs",
+    "verify:welcome": "node scripts/verify-welcome.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",

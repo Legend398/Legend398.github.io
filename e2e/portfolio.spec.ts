@@ -205,13 +205,13 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
-test("reduced motion presents the sculpted hello word as a polished static fallback", async ({ page }) => {
+test("reduced motion presents the sculpted Welcome word as a polished static fallback", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
   const glassForm = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(glassForm).toBeVisible();
-  await expect(glassForm).toHaveAttribute("data-glass-word", "hello");
+  await expect(glassForm).toHaveAttribute("data-glass-word", "Welcome");
   await expect(glassForm).toHaveAttribute("data-scene-mode", "fallback");
   await expect(glassForm).toHaveAttribute("data-render-state", "ready");
   await expect(glassForm).toHaveAttribute("data-active-ripples", "0");
@@ -279,9 +279,9 @@ test("profile ripple mounts only while the About card is visible", async ({ page
   await expect(ripple).toHaveCount(0);
 });
 
-test("hero remains covered while the downloaded GLTF is pending or unavailable", async ({ page }) => {
+test("hero releases the loader to a usable fallback when its model fails", async ({ page }) => {
   let releaseModelRequest: (() => void) | undefined;
-  await page.route("**/model/hello.gltf", async (route) => {
+  await page.route("**/model/welcome.glb", async (route) => {
     await new Promise<void>((resolve) => {
       releaseModelRequest = resolve;
     });
@@ -302,8 +302,13 @@ test("hero remains covered while the downloaded GLTF is pending or unavailable",
     releaseModelRequest?.();
     await expect(glass).toHaveAttribute("data-model-source", "failed");
     await expect(glass).toHaveAttribute("data-model-state", "failed");
-    await expect(glass).toHaveAttribute("data-render-state", "loading");
-    await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
+    await expect(glass).toHaveAttribute("data-scene-mode", "fallback");
+    await expect(glass).toHaveAttribute("data-render-state", "ready");
+    await expect(glass.locator("[data-glass-fallback]")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+    await expect(page.locator("html")).not.toHaveAttribute("data-portfolio-loading");
+    await page.getByRole("link", { name: "View selected work" }).click();
+    await expect(page).toHaveURL(/#work$/);
   } finally {
     releaseModelRequest?.();
   }
@@ -325,7 +330,7 @@ test("slow sticker textures do not block the downloaded WebGL hero", async ({ pa
   try {
     const glass = page.locator('[data-v8-hero] [data-glass-stage]');
     await expect(glass).toHaveAttribute("data-render-state", "ready");
-    await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
+    await expect(glass).toHaveAttribute("data-model-source", "welcome-original");
     await expect(glass).toHaveAttribute("data-renderer", "webgl");
     await expect(glass).toHaveAttribute("data-postfx-profile", "multiscale-temporal-optical");
     await expect(glass).toHaveAttribute("data-sticker-state", "loading");
@@ -361,7 +366,7 @@ test("the first three sticker textures start falling while the rest continue str
   try {
     const glass = page.locator('[data-v8-hero] [data-glass-stage]');
     await expect(glass).toHaveAttribute("data-render-state", "ready");
-    await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
+    await expect(glass).toHaveAttribute("data-model-source", "welcome-original");
     await expect(glass).toHaveAttribute("data-stickers-loaded", "3");
     await expect(glass).toHaveAttribute("data-active-stickers", "3");
     await expect(glass).toHaveAttribute("data-sticker-state", "streaming");
@@ -375,16 +380,51 @@ test("the first three sticker textures start falling while the rest continue str
   }
 });
 
-test("original hello preview remains separate from the current model", async ({ page }) => {
-  await page.setViewportSize({ width: 1_440, height: 900 });
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.goto("/?hello=cleanroom-v2");
-
+test("the Welcome model is used without requesting the borrowed asset", async ({ page }) => {
+  const modelRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/model/")) modelRequests.push(request.url());
+  });
+  await page.goto("/");
   const glass = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(glass).toHaveAttribute("data-hello-variant", "cleanroom-v2");
-  await expect(glass).toHaveAttribute("data-model-source", "cleanroom-v2");
-  await expect(glass).toHaveAttribute("data-renderer", "webgl");
+  await expect(glass).toHaveAttribute("data-model-source", "welcome-original");
   await expect(glass).toHaveAttribute("data-render-state", "ready");
+  expect(modelRequests.some((url) => url.endsWith("/model/welcome.glb"))).toBe(true);
+  expect(modelRequests.every((url) => !url.includes("hello"))).toBe(true);
+});
+
+test("a stalled model times out to static Welcome and ignores a late result", async ({ page }) => {
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/model/welcome.glb", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  try {
+    const glass = page.locator("[data-glass-stage]");
+    await expect(glass).toHaveAttribute("data-model-state", "failed", { timeout: 15_000 });
+    await expect(glass).toHaveAttribute("data-scene-mode", "fallback");
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+    release?.();
+    await page.waitForLoadState("load");
+    await expect(glass).toHaveAttribute("data-scene-mode", "fallback");
+    await expect(glass).toHaveAttribute("data-model-state", "failed");
+  } finally {
+    release?.();
+  }
+});
+
+test("switching reduced motion on stops the scene and keeps static Welcome", async ({ page }) => {
+  await page.goto("/");
+  const glass = page.locator("[data-glass-stage]");
+  await expect(glass).toHaveAttribute("data-render-state", "ready");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(glass).toHaveAttribute("data-scene-mode", "fallback");
+  await page.mouse.move(400, 300);
+  await expect(glass.locator("canvas")).toBeHidden();
+  await expect(glass.locator("[data-glass-fallback]")).toBeVisible();
+  expect(await glass.evaluate((element) => element.style.getPropertyValue("--pointer-x"))).toBe("0");
 });
 
 test("hero shows its glass fallback without JavaScript or a loading screen", async ({ browser }) => {
@@ -401,7 +441,7 @@ test("hero shows its glass fallback without JavaScript or a loading screen", asy
     const fallback = glass.locator("[data-glass-fallback]");
 
     await expect(fallback).toBeVisible();
-    await expect(glass.locator(".sceneLoader")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden();
   } finally {
     await context.close();
   }
@@ -413,8 +453,8 @@ test("v8 hero keeps its sculpted glass render ready and sharp while idle", async
   await page.goto("/");
 
   const glass = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(glass).toHaveAttribute("data-glass-word", "hello");
-  await expect(glass).toHaveAttribute("data-model-source", "downloaded-gltf");
+  await expect(glass).toHaveAttribute("data-glass-word", "Welcome");
+  await expect(glass).toHaveAttribute("data-model-source", "welcome-original");
   await expect(glass).toHaveAttribute("data-scene-mode", "webgl");
   await expect(glass).toHaveAttribute("data-render-state", "ready");
   await expect(glass).toHaveAttribute("data-shimmer-state", "animated");
@@ -630,7 +670,7 @@ test("multiscale cursor field reaches the wider scene and leaves a smooth afterg
   expect(afterglowDifference.meanDelta).toBeLessThan(liveDifference.meanDelta * 1.15);
 });
 
-test("gel bubble visibly bends the hello word without changing a distant control region", async ({ page }) => {
+test("gel bubble visibly bends the Welcome word without changing a distant control region", async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 640 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
@@ -752,6 +792,8 @@ test("hero falls back cleanly when WebGL is unavailable", async () => {
     const scene = page.locator('[data-v8-hero] [data-glass-stage]');
     await expect(scene).toHaveAttribute("data-scene-mode", "fallback");
     await expect(scene.locator("[data-glass-fallback]")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+    await expect(page.locator("html")).not.toHaveAttribute("data-portfolio-loading");
   } finally {
     await browser.close();
   }

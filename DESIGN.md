@@ -3,7 +3,7 @@
 ## Status and evidence
 
 - Status: accepted implementation spec
-- Last refreshed: 2026-08-18
+- Welcome asset refreshed: 2026-10-02; other design notes retain their original 2026-08-18 context
 - Primary surfaces: homepage plus three project case studies
 - Reference evidence: the live `https://haoqi.design/` DOM/network/WebGL capture, its public Codrops engineering article, the user-supplied 37.27-second screen recording, a rendered SingleFile archive, desktop/mobile motion captures, and a Playwright trace
 - Accepted concepts:
@@ -17,15 +17,15 @@ The reference is a craft target, not an identity template. Transfer its restrain
 
 ## Visual thesis
 
-A warm editorial engineering portfolio built around one clear glass word: `BUILD`. The word is recognizable before its material is noticed, stays sharp at rest, and becomes softly refractive only beneath a cursor that actually intersects it. The rest of the page is deliberately quiet so the work, portrait, and experience carry the story.
+A warm editorial engineering portfolio built around one clear glass word: `Welcome`. The word is recognizable before its material is noticed, stays sharp at rest, and becomes softly refractive only beneath a cursor that actually intersects it. The rest of the page is deliberately quiet so the work, portrait, and experience carry the story.
 
 ## Content plan
 
-1. Hero: exact role, `Software, AI, and data—built to be used.`, one plain explanation, the glass `BUILD`, work and résumé actions.
+1. Hero: exact role, `Software, AI, and data—built to be used.`, one plain explanation, the glass `Welcome`, work and résumé actions.
 2. About: the real portrait, one short explanation of cross-stack work, and three unboxed practice rows.
 3. Work: Loop Engineering as the wide lead, then Stocklane and Credit Risk Explorer as equal media-led entries using genuine project artifacts.
 4. Experience: one concise Enlab story followed by factual education and recognition rows.
-5. Contact: one human question, the email, social links, and the same `BUILD` form reused low in the composition rather than a second unrelated 3D idea.
+5. Contact: one human question, the email, social links, and the same `Welcome` form reused low in the composition rather than a second unrelated 3D idea.
 
 ## Interaction thesis
 
@@ -63,7 +63,7 @@ A warm editorial engineering portfolio built around one clear glass word: `BUILD
 
 - The phone hero is a dedicated viewport scene, not the desktop grid collapsed to one column.
 - At 390px, the role begins near 80px, the three-line headline near 123px, the glass field occupies roughly 350–500px, and the intro/actions anchor the lower viewport.
-- `BUILD` is nearly viewport-wide with only controlled edge bleed. WebGL and reduced-motion fallback occupy the same field; motion preference must never change composition.
+- `Welcome` is nearly viewport-wide with only controlled edge bleed. WebGL and reduced-motion fallback occupy the same field; motion preference must never change composition.
 - The header keeps the HK mark and name but replaces the desktop navigation with a plain two-line 44px menu target.
 - Phone actions use short visible labels while preserving the full accessible names. Neither label may wrap.
 - The dark About background peeks into the first viewport to signal continuity. The hero has no arbitrary fixed spacer.
@@ -71,11 +71,11 @@ A warm editorial engineering portfolio built around one clear glass word: `BUILD
 
 ## Glass implementation
 
-- One beveled `TextGeometry` mesh using the bundled permitted typeface JSON.
+- One rounded distance-field mesh generated from the bundled Pacifico OFL font. The same outline supplies the static SVG fallback.
 - A two-pass render target: a small original light-field scene is drawn into an FBO while the word is excluded, then the word shader samples that texture for refraction, dispersion, and Fresnel. No copied model, texture, sticker, or shader asset.
 - The main canvas remains transparent outside the mesh; DOM and CSS own page structure and accessibility.
 - A global pointer sample is raycast against the word. Only a real mesh hit enables the screen-space local blur/refraction lens.
-- One fixed, modest DPR; offscreen/hidden gating; demand rendering after interaction settles; CSS `BUILD` fallback for reduced motion or unavailable WebGL.
+- One fixed, modest DPR; offscreen/hidden gating; demand rendering after interaction settles; CSS `Welcome` fallback for reduced motion or unavailable WebGL.
 
 ## Accessibility and performance
 

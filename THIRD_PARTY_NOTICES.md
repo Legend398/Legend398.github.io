@@ -1,16 +1,22 @@
 # Third-party notices
 
-## Haoqi Wen: 3D `hello` model
+## Pacifico: Welcome lettering
 
-`public/model/hello.gltf` is attributed to Haoqi Wen and was obtained from the
-runtime assets of his portfolio. Haoqi retains ownership of his original work.
-This notice provides source credit only; it does not claim affiliation,
-endorsement, or permission to redistribute the asset.
+The `Welcome` lettering in `public/model/welcome.glb` and
+`components/hero/WelcomePath.ts` is generated from the bundled, unmodified
+Pacifico typeface. `scripts/build-welcome.mjs` constructs the rounded mesh from
+its glyph outlines; it does not use another portfolio's model as input.
 
-- Creator: Haoqi Wen
-- Portfolio: <https://haoqi.design/>
-- Local asset: `public/model/hello.gltf`
-- Licence status: no public reuse licence identified
+- Copyright 2018 The Pacifico Project Authors
+- Upstream: <https://github.com/googlefonts/Pacifico>
+- Font source: <https://github.com/google/fonts/tree/main/ofl/pacifico>
+- Bundled font: `scripts/assets/Pacifico-Regular.ttf`
+- License: SIL Open Font License 1.1; full text in `scripts/assets/Pacifico-OFL.txt`
+- Font SHA-256: `5b6c0d5334a7bf77dea52b975c5a0c408878c0f7115ed5b6fb151f634b7bf701`
+
+The previously borrowed `hello` model has been removed from the source and
+static export. This records the replacement's source and license, and is not a
+legal opinion about unrelated assets or the portfolio as a whole.
 
 ## React Bits: Liquid Ether and Ripple Distortion
 

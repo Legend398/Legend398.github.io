@@ -9,6 +9,7 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const HERO_SCENE_READY_EVENT = "hero-scene-ready";
 const LOADER_MINIMUM_MS = 600;
 const LOADER_EXIT_MS = 680;
+const LOADER_MAXIMUM_MS = 12_000;
 
 type LoaderPhase = "loading" | "leaving" | "hidden";
 
@@ -68,21 +69,20 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       }, remainingMinimum);
     };
 
-    const allowsStaticFallback = window.matchMedia(REDUCED_MOTION_QUERY).matches;
     const releaseForCompleteScene = (event: Event) => {
       const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
-      if (mode === "webgl" || allowsStaticFallback) releaseLoader();
+      if (mode === "webgl" || mode === "fallback") releaseLoader();
     };
     const scene = document.querySelector<HTMLElement>(".glassScene");
-    if (
-      scene?.dataset.renderState === "ready"
-      && (scene.dataset.sceneMode === "webgl" || allowsStaticFallback)
-    ) {
+    if (scene?.dataset.renderState === "ready") {
       releaseLoader();
     }
     window.addEventListener(HERO_SCENE_READY_EVENT, releaseForCompleteScene);
+    // Decorative media must never trap visitors behind the loading screen.
+    const safetyTimer = window.setTimeout(releaseLoader, LOADER_MAXIMUM_MS);
 
     return () => {
+      window.clearTimeout(safetyTimer);
       window.clearTimeout(revealTimer);
       window.clearTimeout(removeTimer);
       window.removeEventListener(HERO_SCENE_READY_EVENT, releaseForCompleteScene);
