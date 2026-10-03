@@ -1,201 +1,133 @@
-// Original hand-drawn lettering. This build uses only the curves below; no font,
-// downloaded model, or external outline is an input. Run: node scripts/build-hola.mjs
+// Original spatial pen paths. No imported model or font is used by this build.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { edgeTable, triTable } from "three/examples/jsm/objects/MarchingCubes.js";
-import { MeshoptSimplifier } from "three/examples/jsm/libs/meshopt_simplifier.module.js";
+import { CatmullRomCurve3, Vector3 } from "three";
 
 const root = resolve(import.meta.dirname, "..");
-// Each cubic ends with its stroke radius. Tangent continuity, open counters,
-// and gently varying pressure are authored before making the solid surface.
-const strokes = [
-  {
-    start: [0.22, 0.75, 0.15],
-    curves: [
-      [0.40, 1.11, 0.61, 1.47, 1.03, 2.35, 0.16],
-      [1.32, 2.97, 0.98, 3.21, 0.65, 2.88, 0.22],
-      [0.31, 2.54, 0.24, 1.30, 0.14, 0.25, 0.25],
-      [0.23, 0.81, 0.63, 1.43, 1.02, 1.40, 0.23],
-      [1.55, 1.36, 1.43, 0.67, 1.31, 0.28, 0.24],
-      [1.20, -0.08, 1.63, 0.04, 1.98, 0.53, 0.16],
-    ],
-  },
-  {
-    start: [2.85, 1.35, 0.22],
-    curves: [
-      [2.39, 1.73, 1.94, 1.37, 1.89, 0.72, 0.25],
-      [1.84, 0.11, 2.19, -0.08, 2.60, 0.19, 0.24],
-      [2.97, 0.43, 3.14, 1.11, 2.85, 1.35, 0.22],
-    ],
-  },
-  {
-    start: [2.85, 1.35, 0.16],
-    curves: [
-      [3.26, 1.05, 3.87, 1.86, 4.14, 2.58, 0.16],
-      [4.38, 3.22, 3.90, 3.24, 3.62, 2.80, 0.22],
-      [3.27, 2.25, 3.31, 1.09, 3.37, 0.53, 0.26],
-      [3.45, -0.17, 4.02, 0.01, 4.48, 0.56, 0.16],
-    ],
-  },
-  {
-    start: [5.44, 1.35, 0.22],
-    curves: [
-      [4.99, 1.74, 4.48, 1.34, 4.45, 0.70, 0.25],
-      [4.41, 0.15, 4.68, -0.07, 5.04, 0.15, 0.24],
-      [5.43, 0.40, 5.71, 1.12, 5.44, 1.35, 0.22],
-    ],
-  },
-  {
-    start: [5.66, 1.48, 0.21],
-    curves: [
-      [5.54, 1.11, 5.40, 0.62, 5.43, 0.33, 0.23],
-      [5.48, -0.07, 5.82, 0.12, 6.13, 0.43, 0.18],
-      [6.43, 0.73, 6.58, 0.97, 6.78, 1.10, 0.12],
-    ],
-  },
+// Crossings are laid out in depth. A returning stroke can pass behind the next
+// downstroke without welding the two silhouettes into a swollen junction.
+const paths = [
+  [
+    [-0.40,0.45,-0.44], [-0.02,0.64,-0.44], [0.28,1.30,-0.42],
+    [0.72,1.84,-0.38], [0.98,2.40,-0.23], [0.83,2.71,0.02],
+    [0.45,2.48,0.18], [0.24,1.76,0.22], [0.12,0.80,0.22], [0.10,0.18,0.22],
+  ],
+  [
+    [0.12,0.58,0.22], [0.23,0.92,0.22], [0.52,1.20,0.23],
+    [0.89,1.17,0.22], [1.07,0.83,0.15], [1.06,0.43,0.10], [1.28,0.20,0.08], [1.65,0.32,0.00],
+    [1.83,0.72,-0.26], [2.02,1.03,-0.30], [2.49,1.06,-0.30], [2.76,0.90,-0.12],
+    [2.75,0.46,0.05], [2.45,0.20,0.27], [2.04,0.25,0.35],
+    [1.86,0.59,0.40], [2.03,1.04,0.45], [2.43,1.19,0.44], [2.76,1.12,0.23],
+    [3.57,1.32,-0.25], [3.89,2.06,-0.31], [3.95,2.46,-0.12],
+    [3.74,2.66,0.13], [3.43,2.40,0.34], [3.19,1.71,0.44],
+    [3.15,0.94,0.47], [3.33,0.38,0.47], [3.69,0.20,0.36], [4.08,0.43,0.00],
+    [4.35,0.68,-0.29], [4.48,1.02,-0.30], [4.93,1.04,-0.28], [5.15,0.93,-0.08],
+    [5.19,0.51,0.14], [4.91,0.22,0.28], [4.56,0.23,0.35],
+    [4.42,0.56,0.42], [4.51,0.98,0.47], [4.88,1.19,0.44],
+    [5.46,1.02,0.42], [5.43,0.63,0.46], [5.49,0.26,0.45],
+    [5.81,0.25,0.40], [6.16,0.51,0.22], [6.47,0.79,0.03],
+  ],
 ];
+const radius = 0.205;
+const radialSegments = 28;
+const capSegments = 9;
+const positions = [], normals = [], indices = [], silhouetteSamples = [];
+const strokeRanges = [];
 
-const step = 0.0175;
-const origin = [-0.75, -0.48, -1.20];
-const size = [Math.ceil(8.1 / step), Math.ceil(3.25 / step), Math.ceil(2.4 / step)];
-const [nx, ny, nz] = size;
-const plane = nx * ny;
-let field = new Float32Array(plane * nz).fill(-0.4);
-const depth = 1.22;
-const samples = [];
-for (const stroke of strokes) {
-  let [ax, ay, ar] = stroke.start;
-  let previous;
-  for (const [bx, by, cx, cy, dx, dy, dr] of stroke.curves) {
-    for (let i = 0; i <= 48; i++) {
-      const t = i / 48, s = 1 - t;
-      const point = [
-        s*s*s*ax + 3*s*s*t*bx + 3*s*t*t*cx + t*t*t*dx,
-        (s*s*s*ay + 3*s*s*t*by + 3*s*t*t*cy + t*t*t*dy) * 0.74,
-        ar + (dr - ar) * t*t*(3 - 2*t),
-      ];
-      // Gently bend the pen's path in depth. Each stroke keeps a rounded cross
-      // section instead of becoming a long, flat extrusion behind an outline.
-      point.push(0.10*(point[0]-3.3) + 0.12*Math.sin(point[0]*1.3)
-        - 0.20*point[1] + 0.06*Math.sin(point[1]*2 + point[0]*1.5));
-      if (previous && i > 0) samples.push([previous, point]);
-      previous = point;
+function roundedPath(points) {
+  const guide = new CatmullRomCurve3(points.map(([x,y,z]) => new Vector3(x,y*0.90,z)), false, "centripetal");
+  guide.arcLengthDivisions = 4096;
+  const count = Math.ceil(guide.getLength() / 0.0225);
+  const samples = guide.getSpacedPoints(count);
+  const sigma = radius / (guide.getLength()/count);
+  const reach = Math.ceil(sigma*3);
+  // Smooth curvature in arc-length space. This removes tight pinches between
+  // editing handles while preserving a genuinely circular, constant-width pen.
+  const smooth = samples.map((_,i) => {
+    const sum = new Vector3(); let total = 0;
+    for (let offset=-reach;offset<=reach;offset++) {
+      const weight = Math.exp(-0.5*(offset/sigma)**2), j = i+offset;
+      const p = j<0 ? samples[0].clone().addScaledVector(samples[1].clone().sub(samples[0]),j)
+        : j>count ? samples[count].clone().addScaledVector(samples[count].clone().sub(samples[count-1]),j-count)
+        : samples[j];
+      sum.addScaledVector(p,weight); total+=weight;
     }
-    [ax, ay, ar] = [dx, dy, dr];
-  }
+    return sum.divideScalar(total);
+  });
+  return new CatmullRomCurve3(smooth, false, "centripetal");
 }
 
-// Swept elliptical solids: nearby strokes merge in the volume, so there are no
-// interpenetrating tube surfaces or exposed end caps at a letter connection.
-for (const [a, b] of samples) {
-  const radius = Math.max(a[2], b[2]) + 0.11;
-  const from = [
-    Math.max(1, Math.floor((Math.min(a[0], b[0]) - radius - origin[0]) / step)),
-    Math.max(1, Math.floor((Math.min(a[1], b[1]) - radius - origin[1]) / step)),
-    Math.max(1, Math.floor((Math.min(a[3],b[3])-radius * depth - origin[2]) / step)),
-  ];
-  const to = [
-    Math.min(nx - 2, Math.ceil((Math.max(a[0], b[0]) + radius - origin[0]) / step)),
-    Math.min(ny - 2, Math.ceil((Math.max(a[1], b[1]) + radius - origin[1]) / step)),
-    Math.min(nz - 2, Math.ceil((Math.max(a[3],b[3])+radius * depth - origin[2]) / step)),
-  ];
-  const vx = b[0] - a[0], vy = b[1] - a[1], vz=(b[3]-a[3])/depth;
-  const length2 = vx*vx + vy*vy + vz*vz;
-  for (let y = from[1]; y <= to[1]; y++) for (let x = from[0]; x <= to[0]; x++) {
-    const px = origin[0] + x*step - a[0], py = origin[1] + y*step - a[1];
-    for (let z = from[2]; z <= to[2]; z++) {
-      const pz=(origin[2]+z*step-a[3])/depth;
-      const t = Math.max(0, Math.min(1, (px*vx + py*vy + pz*vz) / length2));
-      const d2 = (px - t*vx)**2 + (py - t*vy)**2 + (pz - t*vz)**2;
-      const r = a[2] + (b[2] - a[2])*t;
-      const i = z*plane + y*nx + x;
-      const f = r - Math.sqrt(d2);
-      if (f > field[i]) field[i] = f;
+for (const points of paths) {
+  const curve = roundedPath(points);
+  curve.arcLengthDivisions = 4096;
+  const segments = Math.ceil(curve.getLength() / 0.037);
+  const frames = curve.computeFrenetFrames(segments, false);
+  const rings = [];
+  const firstVertex = positions.length / 3;
+
+  function ring(center, normal, binormal, tangent, radialSize, axialNormal) {
+    const ids = [];
+    for (let j = 0; j < radialSegments; j++) {
+      const angle = j / radialSegments * Math.PI * 2;
+      const radial = normal.clone().multiplyScalar(Math.cos(angle))
+        .addScaledVector(binormal, Math.sin(angle));
+      const p = center.clone().addScaledVector(radial, radius * radialSize);
+      const n = radial.multiplyScalar(radialSize).addScaledVector(tangent, axialNormal).normalize();
+      ids.push(positions.length / 3);
+      positions.push(p.x,p.y,p.z);
+      normals.push(n.x,n.y,n.z);
     }
+    rings.push(ids);
   }
-}
-// Smooth the entire union rather than smoothing each letter independently.
-// This gently blends junctions and gives continuous, broad specular highlights.
-let next = field.slice();
-for (let pass = 0; pass < 16; pass++) {
-  for (let z = 1; z < nz - 1; z++) for (let y = 1; y < ny - 1; y++) {
-    const start = z*plane + y*nx;
-    for (let x = 1; x < nx - 1; x++) {
-      const i = start + x;
-      next[i] = (field[i]*2 + field[i-1] + field[i+1] + field[i-nx] + field[i+nx] + field[i-plane] + field[i+plane]) / 8;
+
+  const begin = curve.getPointAt(0), end = curve.getPointAt(1);
+  positions.push(...begin.clone().addScaledVector(frames.tangents[0], -radius).toArray());
+  normals.push(...frames.tangents[0].clone().negate().toArray());
+  for (let c = 1; c < capSegments; c++) {
+    const angle = c / capSegments * Math.PI * 0.5;
+    ring(begin.clone().addScaledVector(frames.tangents[0], -radius*Math.cos(angle)),
+      frames.normals[0], frames.binormals[0], frames.tangents[0], Math.sin(angle), -Math.cos(angle));
+  }
+  for (let i = 0; i <= segments; i++) {
+    const p = curve.getPointAt(i / segments);
+    ring(p, frames.normals[i], frames.binormals[i], frames.tangents[i], 1, 0);
+    silhouetteSamples.push([p.x,p.y]);
+  }
+  for (let c = 1; c < capSegments; c++) {
+    const angle = c / capSegments * Math.PI * 0.5;
+    ring(end.clone().addScaledVector(frames.tangents[segments], radius*Math.sin(angle)),
+      frames.normals[segments], frames.binormals[segments], frames.tangents[segments], Math.cos(angle), Math.sin(angle));
+  }
+  const finalVertex = positions.length / 3;
+  positions.push(...end.clone().addScaledVector(frames.tangents[segments], radius).toArray());
+  normals.push(...frames.tangents[segments].toArray());
+  for (let j = 0; j < radialSegments; j++) {
+    const k = (j+1) % radialSegments;
+    indices.push(firstVertex,rings[0][k],rings[0][j]);
+    for (let i = 0; i < rings.length - 1; i++) {
+      indices.push(rings[i][j],rings[i][k],rings[i+1][j], rings[i][k],rings[i+1][k],rings[i+1][j]);
     }
+    indices.push(rings.at(-1)[j],rings.at(-1)[k],finalVertex);
   }
-  [field, next] = [next, field];
+  strokeRanges.push({firstVertex,finalVertex,segments});
 }
 
-const positions = [], normals = [], indices = [], cache = new Map();
-const corners = [[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
-const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
-function vertex(x, y, z, edge) {
-  const [a,b] = edges[edge].map(i => corners[i]);
-  const ia=(z+a[2])*plane+(y+a[1])*nx+x+a[0];
-  const ib=(z+b[2])*plane+(y+b[1])*nx+x+b[0];
-  const axis=a[0]!==b[0]?0:a[1]!==b[1]?1:2;
-  const key=Math.min(ia,ib)*3+axis;
-  if (cache.has(key)) return cache.get(key);
-  const t=field[ia]/(field[ia]-field[ib]);
-  const id=positions.length/3;
-  positions.push(...[x,y,z].map((v,i)=>origin[i]+(v+a[i]+(b[i]-a[i])*t)*step));
-  const normal=[1,nx,plane].map(d=>
-    (field[ia-d]-field[ia+d])*(1-t)+(field[ib-d]-field[ib+d])*t);
-  const length=Math.hypot(...normal);
-  normals.push(...normal.map(v=>v/length));
-  cache.set(key,id);
-  return id;
+// Consistent outward winding; the sweep's analytic normals remain continuous.
+let orientation = 0;
+for (let i = 0; i < indices.length; i += 3) {
+  const [a,b,c] = indices.slice(i,i+3).map(x => x*3);
+  const u = new Vector3(...positions.slice(b,b+3)).sub(new Vector3(...positions.slice(a,a+3)));
+  const v = new Vector3(...positions.slice(c,c+3)).sub(new Vector3(...positions.slice(a,a+3)));
+  orientation += u.cross(v).dot(new Vector3(...normals.slice(a,a+3)));
 }
-for(let z=1;z<nz-2;z++) for(let y=1;y<ny-2;y++) for(let x=1;x<nx-2;x++) {
-  let cube=0;
-  for(let i=0;i<8;i++) {
-    const c=corners[i];
-    if(field[(z+c[2])*plane+(y+c[1])*nx+x+c[0]]<0) cube|=1<<i;
-  }
-  if(!edgeTable[cube]) continue;
-  for(let i=0;triTable[cube*16+i]!==-1;i+=3) {
-    indices.push(vertex(x,y,z,triTable[cube*16+i]),vertex(x,y,z,triTable[cube*16+i+1]),vertex(x,y,z,triTable[cube*16+i+2]));
-  }
-}
-
-// Preserve the silhouette and field-derived normals while keeping runtime work
-// close to the existing hero. All sculpting happens offline, never on page load.
-await MeshoptSimplifier.ready;
-const positionArray=Float32Array.from(positions), normalArray=Float32Array.from(normals);
-function edgeCounts(index) {
-  const counts=new Map();
-  for(let i=0;i<index.length;i+=3) for(let e=0;e<3;e++) {
-    const a=index[i+e],b=index[i+(e+1)%3],key=a<b?`${a}/${b}`:`${b}/${a}`;
-    counts.set(key,(counts.get(key)??0)+1);
-  }
-  return [...counts.values()].filter(n=>n!==2).length;
-}
-console.log(JSON.stringify({rawVertices:positions.length/3,rawTriangles:indices.length/3,irregularEdges:edgeCounts(indices)}));
-const [simplified,error]=MeshoptSimplifier.simplifyWithAttributes(
-  Uint32Array.from(indices),positionArray,3,normalArray,3,[0.25,0.25,0.25],null,138000,0.0009,
-);
-const [remap,vertexCount]=MeshoptSimplifier.compactMesh(simplified);
-const compactPositions=new Float32Array(vertexCount*3), compactNormals=new Float32Array(vertexCount*3);
-for(let i=0;i<remap.length;i++) if(remap[i]!==0xffffffff) {
-  compactPositions.set(positionArray.subarray(i*3,i*3+3),remap[i]*3);
-  compactNormals.set(normalArray.subarray(i*3,i*3+3),remap[i]*3);
-}
+if (orientation < 0) for (let i = 0; i < indices.length; i += 3) [indices[i+1],indices[i+2]]=[indices[i+2],indices[i+1]];
 const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
-for(let i=0;i<compactPositions.length;i++) { const a=i%3;min[a]=Math.min(min[a],compactPositions[i]);max[a]=Math.max(max[a],compactPositions[i]); }
-const scale=6.35/(max[0]-min[0]), center=min.map((v,i)=>(v+max[i])/2);
-for(let i=0;i<compactPositions.length;i++) compactPositions[i]=(compactPositions[i]-center[i%3])*scale;
-let orientation=0;
-for(let i=0;i<simplified.length;i+=3) {
-  const [a,b,c]=[simplified[i]*3,simplified[i+1]*3,simplified[i+2]*3];
-  const u=[0,1,2].map(k=>compactPositions[b+k]-compactPositions[a+k]);
-  const v=[0,1,2].map(k=>compactPositions[c+k]-compactPositions[a+k]);
-  orientation+=(u[1]*v[2]-u[2]*v[1])*compactNormals[a]+(u[2]*v[0]-u[0]*v[2])*compactNormals[a+1]+(u[0]*v[1]-u[1]*v[0])*compactNormals[a+2];
-}
-if(orientation<0) for(let i=0;i<simplified.length;i+=3) [simplified[i+1],simplified[i+2]]=[simplified[i+2],simplified[i+1]];
-const compactIndices=vertexCount<65536?Uint16Array.from(simplified):simplified;
-const arrays=[compactPositions,compactNormals,compactIndices],views=[];
+for (let i=0;i<positions.length;i++) {const a=i%3;min[a]=Math.min(min[a],positions[i]);max[a]=Math.max(max[a],positions[i]);}
+const scale=6.35/(max[0]-min[0]),center=min.map((v,i)=>(v+max[i])*0.5);
+const normalized=Float32Array.from(positions,(v,i)=>(v-center[i%3])*scale);
+const vertexCount=positions.length/3;
+const indexArray=vertexCount<65536?Uint16Array.from(indices):Uint32Array.from(indices);
+const arrays=[normalized,Float32Array.from(normals),indexArray],views=[];
 let byteOffset=0;
 const binary=Buffer.concat(arrays.map(array=>{
   const data=Buffer.from(array.buffer,array.byteOffset,array.byteLength);
@@ -204,12 +136,12 @@ const binary=Buffer.concat(arrays.map(array=>{
   return Buffer.concat([data,pad]);
 }));
 const model={
-  asset:{version:"2.0",generator:"Himanshu portfolio / build-hola.mjs",extras:{text:"hola",surface:"Original cubic lettering, unified elliptical volume"}},
-  scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0,name:"hola"}],meshes:[{primitives:[{attributes:{POSITION:0,NORMAL:1},indices:2}]}],
+  asset:{version:"2.0",generator:"Himanshu portfolio / build-hola.mjs",extras:{text:"hola",surface:"Original spatial pen paths with constant circular strokes",strokeRanges}},
+  scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0,name:"hola-original"}],meshes:[{primitives:[{attributes:{POSITION:0,NORMAL:1},indices:2}]}],
   buffers:[{byteLength:binary.length}],bufferViews:views,accessors:[
     {bufferView:0,componentType:5126,count:vertexCount,type:"VEC3",min:min.map((v,i)=>(v-center[i])*scale),max:max.map((v,i)=>(v-center[i])*scale)},
     {bufferView:1,componentType:5126,count:vertexCount,type:"VEC3"},
-    {bufferView:2,componentType:vertexCount<65536?5123:5125,count:compactIndices.length,type:"SCALAR"},
+    {bufferView:2,componentType:vertexCount<65536?5123:5125,count:indexArray.length,type:"SCALAR"},
   ],
 };
 let json=Buffer.from(JSON.stringify(model));json=Buffer.concat([json,Buffer.alloc((4-json.length%4)%4,32)]);
@@ -218,42 +150,47 @@ const binHeader=Buffer.alloc(8);binHeader.writeUInt32LE(binary.length,0);binHead
 mkdirSync(resolve(root,"public/model"),{recursive:true});
 writeFileSync(resolve(root,"public/model/hola.glb"),Buffer.concat([header,json,binHeader,binary]));
 
-// The no-WebGL fallback is traced from this same solid's frontal silhouette.
-// Its counters, junctions and terminal shapes therefore match the 3D lettering.
+// A lightweight outline fallback comes from the frontal projection of the same
+// authored centerlines. Only this 2D projection combines overlapping strokes.
+const step=0.0075,origin=[min[0]-0.05,min[1]-0.05];
+const nx=Math.ceil((max[0]-min[0]+0.1)/step)+1,ny=Math.ceil((max[1]-min[1]+0.1)/step)+1;
+const field=new Float32Array(nx*ny).fill(-1);
+for (const p of silhouetteSamples) {
+  const xa=Math.max(0,Math.floor((p[0]-radius-step-origin[0])/step)), xb=Math.min(nx-1,Math.ceil((p[0]+radius+step-origin[0])/step));
+  const ya=Math.max(0,Math.floor((p[1]-radius-step-origin[1])/step)), yb=Math.min(ny-1,Math.ceil((p[1]+radius+step-origin[1])/step));
+  for(let y=ya;y<=yb;y++) for(let x=xa;x<=xb;x++) {
+    const i=y*nx+x;field[i]=Math.max(field[i],radius-Math.hypot(origin[0]+x*step-p[0],origin[1]+y*step-p[1]));
+  }
+}
 const outlines=new Map(),points=new Map();
-const silhouette=new Float32Array(plane).fill(-Infinity);
-for(let z=1;z<nz-1;z++) for(let i=0;i<plane;i++) silhouette[i]=Math.max(silhouette[i],field[z*plane+i]);
 function contourPoint(x,y,edge) {
   const [a,b]=[[[0,0],[1,0]],[[1,0],[1,1]],[[1,1],[0,1]],[[0,1],[0,0]]][edge];
-  const ia=(y+a[1])*nx+x+a[0],ib=(y+b[1])*nx+x+b[0];
-  const key=Math.min(ia,ib)*2+(a[0]===b[0]?1:0);
+  const ia=(y+a[1])*nx+x+a[0],ib=(y+b[1])*nx+x+b[0],key=Math.min(ia,ib)*2+(a[0]===b[0]?1:0);
   if(!points.has(key)) {
-    const fa=silhouette[ia],fb=silhouette[ib],t=fa/(fa-fb);
+    const t=field[ia]/(field[ia]-field[ib]);
     points.set(key,[(origin[0]+(x+a[0]+t*(b[0]-a[0]))*step)*100,-(origin[1]+(y+a[1]+t*(b[1]-a[1]))*step)*100]);
   }
   return key;
 }
-for(let y=1;y<ny-2;y++) for(let x=1;x<nx-2;x++) {
-  const values=[silhouette[y*nx+x],silhouette[y*nx+x+1],silhouette[(y+1)*nx+x+1],silhouette[(y+1)*nx+x]];
-  const crossings=[];
+for(let y=0;y<ny-1;y++) for(let x=0;x<nx-1;x++) {
+  const values=[field[y*nx+x],field[y*nx+x+1],field[(y+1)*nx+x+1],field[(y+1)*nx+x]],crossings=[];
   for(let e=0;e<4;e++) if((values[e]>0)!==(values[(e+1)%4]>0)) crossings.push(contourPoint(x,y,e));
   for(let i=0;i<crossings.length;i+=2) {
     const a=crossings[i],b=crossings[i+1];
-    if(!outlines.has(a)) outlines.set(a,[]);if(!outlines.has(b)) outlines.set(b,[]);
+    if(!outlines.has(a))outlines.set(a,[]);if(!outlines.has(b))outlines.set(b,[]);
     outlines.get(a).push(b);outlines.get(b).push(a);
   }
 }
-const used=new Set(),paths=[];
+const used=new Set(),contours=[];
 for(const first of outlines.keys()) {
-  if(used.has(first)) continue;
-  let current=first,previous=-1;
-  const line=[];
-  do {
-    line.push(points.get(current));used.add(current);
-    const after=outlines.get(current).find(p=>p!==previous);previous=current;current=after;
-  } while(current!==first&&current!==undefined&&!used.has(current));
-  paths.push(`M${line.map(p=>p.map(v=>v.toFixed(2)).join(",")).join("L")}Z`);
+  if(used.has(first))continue;
+  let current=first,previous=-1;const line=[];
+  do {line.push(points.get(current));used.add(current);const after=outlines.get(current).find(p=>p!==previous);previous=current;current=after;}
+  while(current!==first&&current!==undefined&&!used.has(current));
+  const twiceArea=line.reduce((area,p,i)=>{const q=line[(i+1)%line.length];return area+p[0]*q[1]-q[0]*p[1];},0);
+  if(Math.abs(twiceArea)<2)continue; // Ignore sub-pixel contour specks at a crossing.
+  contours.push(`M${line.map(p=>p.map(v=>v.toFixed(2)).join(",")).join("L")}Z`);
 }
 const viewBox=`${min[0]*100-4} ${-max[1]*100-4} ${(max[0]-min[0])*100+8} ${(max[1]-min[1])*100+8}`;
-writeFileSync(resolve(root,"components/hero/HolaPath.ts"),`// Generated from the original volume by scripts/build-hola.mjs.\nexport const HOLA_VIEWBOX = ${JSON.stringify(viewBox)};\nexport const HOLA_PATH = ${JSON.stringify(paths.join(""))};\n`);
-console.log(JSON.stringify({vertices:vertexCount,triangles:simplified.length/3,bytes:28+json.length+binary.length,error,bounds:model.accessors[0],contours:paths.length}));
+writeFileSync(resolve(root,"components/hero/HolaPath.ts"),`// Generated from scripts/build-hola.mjs.\nexport const HOLA_VIEWBOX = ${JSON.stringify(viewBox)};\nexport const HOLA_PATH = ${JSON.stringify(contours.join(""))};\n`);
+console.log(JSON.stringify({vertices:vertexCount,triangles:indices.length/3,bytes:28+json.length+binary.length,contours:contours.length,bounds:model.accessors[0]}));

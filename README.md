@@ -2,7 +2,7 @@
 
 [View the live portfolio](https://legend398.github.io/)
 
-A software-engineering portfolio built from verified CV and project evidence. The homepage pairs plain-language project stories and genuine product media with an original sculpted glass `hola` powered by Three.js. Its rounded strokes are drawn as cubic curves, bent in depth and joined into one smooth surface. The word stays sharp at rest and applies a local optical ripple only where the pointer intersects it; reduced-motion and no-WebGL sessions receive a matching static fallback.
+A software-engineering portfolio built from verified CV and project evidence. The homepage pairs plain-language project stories and genuine product media with an original sculpted glass `hola` powered by Three.js. Its rounded strokes follow original spatial curves with consistent thickness and carefully layered crossings. The word stays sharp at rest and applies a local optical ripple only where the pointer intersects it; reduced-motion and no-WebGL sessions receive a matching static fallback.
 
 Regenerate the model and fallback outline with `node scripts/build-hola.mjs`.
 The generator uses the curves in that file and tools already bundled in the

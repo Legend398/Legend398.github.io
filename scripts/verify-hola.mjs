@@ -33,6 +33,7 @@ function parent(i) {
   return i;
 }
 let volume=0;
+let invertedArea=0, surfaceArea=0;
 for(let i=0;i<indices.length;i+=3) {
   const triangle=[indices[i],indices[i+1],indices[i+2]];
   assert.equal(new Set(triangle).size,3,"No degenerate triangles");
@@ -44,14 +45,21 @@ for(let i=0;i<indices.length;i+=3) {
     parents[parent(a)]=parent(b);
   }
   const a=triangle[0]*3,b=triangle[1]*3,c=triangle[2]*3;
+  const u=[0,1,2].map(k=>positions[b+k]-positions[a+k]);
+  const v=[0,1,2].map(k=>positions[c+k]-positions[a+k]);
+  const cross=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+  const area=Math.hypot(...cross)*0.5;
+  surfaceArea+=area;
+  if(cross.reduce((sum,value,k)=>sum+value*(normals[a+k]+normals[b+k]+normals[c+k]),0)<0) invertedArea+=area;
   volume+=positions[a]*(positions[b+1]*positions[c+2]-positions[b+2]*positions[c+1])
     +positions[a+1]*(positions[b+2]*positions[c]-positions[b]*positions[c+2])
     +positions[a+2]*(positions[b]*positions[c+1]-positions[b+1]*positions[c]);
 }
 assert.ok([...edges.values()].every(count=>count===2),"The glass surface must be watertight");
-assert.equal(new Set(Array.from(parents,(_,i)=>parent(i))).size,1,"The letters must form one connected surface");
-assert.equal(positions.length/3-edges.size+indices.length/3,-6,"Keep four open counters: h, o, l and a");
+assert.equal(new Set(Array.from(parents,(_,i)=>parent(i))).size,2,"Keep the h ascender separate from the following pen path");
+assert.equal(positions.length/3-edges.size+indices.length/3,4,"Both swept strokes must have closed end caps");
 assert.ok(volume>0,"The faces must point outwards");
+assert.ok(invertedArea/surfaceArea<1e-7,"Rounded bends must not fold the tube surface inside out");
 assert.ok(!existsSync(resolve(root,"public/model/hello.gltf")),"The imported asset must not ship");
 for(const file of ["app/page.tsx","components/GlassWordScene.tsx"]) {
   assert.ok(!/hello\.gltf|haoqi|CleanroomHello|SCULPTED_WORD_PATH/.test(readFileSync(resolve(root,file),"utf8")),`${file} references the retired asset`);

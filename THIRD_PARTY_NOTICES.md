@@ -6,9 +6,8 @@
 assets. Their hand-drawn curves and surface construction are in
 `scripts/build-hola.mjs`; no external font, outline or model is an input.
 
-The generator uses Three.js (MIT) and the bundled meshoptimizer simplifier (MIT),
-with their notices retained in the installed packages. These build tools are
-not shipped as part of the hero's browser code.
+The generator uses Three.js (MIT), with its notice retained in the installed
+package. The lettering generator runs offline and is not shipped as browser code.
 
 ## React Bits: Liquid Ether and Ripple Distortion
 
