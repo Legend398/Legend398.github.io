@@ -286,7 +286,7 @@
     rotateY(calc(var(--pointer-x) * 4deg))
     rotate(-1.5deg);
   transition: opacity 500ms ease;
-  width: min(930px, 64vw);
+  width: min(1100px, 78vw);
 }
 
 .studioHero :global(.glassFallback svg) {
@@ -302,14 +302,14 @@
   fill: rgba(91, 151, 182, 0.24);
   stroke: rgba(42, 103, 136, 0.32);
   stroke-width: 2px;
-  transform: translate(10px, 16px);
+  transform: translate(3px, 5px);
 }
 
 .studioHero :global(.glassFallbackFace) {
   fill: url("#fallback-glass-face");
   paint-order: stroke fill;
   stroke: rgba(247, 252, 255, 0.9);
-  stroke-width: 4px;
+  stroke-width: 1.3px;
 }
 
 .studioHero :global(.glassFallbackSheen) {
@@ -1235,11 +1235,11 @@
   .studioHero :global(.glassFallback) {
     left: 50%;
     top: 50.5%;
-    width: 112vw;
+    width: 90vw;
   }
 
   .studioHero :global(.glassFallback svg) {
-    margin-left: -1vw;
+    margin-left: 0;
     width: 100%;
   }
 

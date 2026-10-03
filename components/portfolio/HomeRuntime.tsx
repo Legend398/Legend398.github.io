@@ -68,15 +68,14 @@ export function HomeRuntime({ children }: { children: ReactNode }) {
       }, remainingMinimum);
     };
 
-    const allowsStaticFallback = window.matchMedia(REDUCED_MOTION_QUERY).matches;
     const releaseForCompleteScene = (event: Event) => {
       const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
-      if (mode === "webgl" || allowsStaticFallback) releaseLoader();
+      if (mode === "webgl" || mode === "fallback") releaseLoader();
     };
     const scene = document.querySelector<HTMLElement>(".glassScene");
     if (
       scene?.dataset.renderState === "ready"
-      && (scene.dataset.sceneMode === "webgl" || allowsStaticFallback)
+      && (scene.dataset.sceneMode === "webgl" || scene.dataset.sceneMode === "fallback")
     ) {
       releaseLoader();
     }

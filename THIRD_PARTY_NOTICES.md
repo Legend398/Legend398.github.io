@@ -1,16 +1,14 @@
 # Third-party notices
 
-## Haoqi Wen: 3D `hello` model
+## Hero lettering
 
-`public/model/hello.gltf` is attributed to Haoqi Wen and was obtained from the
-runtime assets of his portfolio. Haoqi retains ownership of his original work.
-This notice provides source credit only; it does not claim affiliation,
-endorsement, or permission to redistribute the asset.
+`public/model/hola.glb` and `components/hero/HolaPath.ts` are original generated
+assets. Their hand-drawn curves and surface construction are in
+`scripts/build-hola.mjs`; no external font, outline or model is an input.
 
-- Creator: Haoqi Wen
-- Portfolio: <https://haoqi.design/>
-- Local asset: `public/model/hello.gltf`
-- Licence status: no public reuse licence identified
+The generator uses Three.js (MIT) and the bundled meshoptimizer simplifier (MIT),
+with their notices retained in the installed packages. These build tools are
+not shipped as part of the hero's browser code.
 
 ## React Bits: Liquid Ether and Ripple Distortion
 

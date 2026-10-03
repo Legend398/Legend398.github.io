@@ -9,6 +9,7 @@ const requiredFiles = [
   "out/sitemap.xml",
   "out/googlecc418591f1204068.html",
   "out/Himanshu-Kumar-Resume-2026.pdf",
+  "out/model/hola.glb",
   "out/work/loop-engineering/index.html",
   "out/work/stocklane/index.html",
   "out/work/credit-risk-explorer/index.html",
@@ -26,6 +27,12 @@ if (missingFiles.length > 0) {
 }
 
 const homeHtml = readFileSync(resolve(root, "out/index.html"), "utf8");
+if (existsSync(resolve(root, "out/model/hello.gltf")) || homeHtml.includes("hello.gltf")) {
+  throw new Error("The retired reference model must not be published.");
+}
+if (!homeHtml.includes('data-glass-word="hola"')) {
+  throw new Error("The homepage must publish hola and its static fallback.");
+}
 const sitemap = readFileSync(resolve(root, "out/sitemap.xml"), "utf8");
 const robots = readFileSync(resolve(root, "out/robots.txt"), "utf8");
 const googleVerification = readFileSync(resolve(root, "out/googlecc418591f1204068.html"), "utf8").trim();

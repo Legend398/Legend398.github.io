@@ -3,13 +3,11 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
-import { SCULPTED_WORD_PATH } from "@/components/SculptedWordPath";
-import { createCleanroomHelloGeometry } from "@/components/hero/CleanroomHelloGeometry";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { HOLA_PATH, HOLA_VIEWBOX } from "@/components/hero/HolaPath";
 import { HeroFlarePass, HeroFluidPass } from "@/components/hero/HeroPostProcessing";
 
-type HelloModelSource = "downloaded-gltf" | "cleanroom-v2";
+type WordModelSource = "hola-original";
 
 const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
@@ -626,41 +624,7 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   };
 }
 
-function createSculptedGeometry() {
-  const svg = new SVGLoader().parse(
-    `<svg xmlns="http://www.w3.org/2000/svg"><path fill="#fff" fill-rule="evenodd" d="${SCULPTED_WORD_PATH}"/></svg>`,
-  );
-  const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path));
-  const rawGeometry = new THREE.ExtrudeGeometry(shapes, {
-    depth: 66,
-    steps: 1,
-    curveSegments: 12,
-    bevelEnabled: true,
-    bevelThickness: 20,
-    bevelSize: 18,
-    bevelOffset: 0,
-    bevelSegments: 12,
-  });
-
-  rawGeometry.center();
-  rawGeometry.rotateX(Math.PI);
-  rawGeometry.deleteAttribute("normal");
-  rawGeometry.deleteAttribute("uv");
-  const geometry = mergeVertices(rawGeometry, 0.001);
-  rawGeometry.dispose();
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  const width = geometry.boundingBox
-    ? geometry.boundingBox.max.x - geometry.boundingBox.min.x
-    : 1;
-  const scale = 6.35 / Math.max(width, 1);
-  geometry.scale(scale, scale, scale);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
-function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
+function createWordGeometry(scene: THREE.Object3D, targetWidth: number) {
   scene.updateMatrixWorld(true);
   const parts: THREE.BufferGeometry[] = [];
 
@@ -672,7 +636,7 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   });
 
   if (parts.length === 0) {
-    throw new Error("The downloaded hello model has no mesh geometry");
+    throw new Error("The hola model has no mesh geometry");
   }
 
   let geometry: THREE.BufferGeometry;
@@ -681,7 +645,7 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   } else {
     const merged = mergeGeometries(parts, false);
     parts.forEach((part) => part.dispose());
-    if (!merged) throw new Error("The downloaded hello model could not be merged");
+    if (!merged) throw new Error("The hola model could not be merged");
     geometry = merged;
   }
 
@@ -696,10 +660,6 @@ function createDownloadedGeometry(scene: THREE.Object3D, targetWidth: number) {
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
-}
-
-function createDownloadedHelloGeometry(scene: THREE.Object3D) {
-  return createDownloadedGeometry(scene, 6.35);
 }
 
 export function GlassWordScene() {
@@ -909,7 +869,7 @@ export function GlassWordScene() {
       wakeAnimation = () => {};
     };
 
-    const markModelReady = (modelSource: HelloModelSource) => {
+    const markModelReady = (modelSource: WordModelSource) => {
       if (disposed) return;
       root.dataset.modelSource = modelSource;
       root.dataset.modelState = "ready";
@@ -921,6 +881,7 @@ export function GlassWordScene() {
       if (disposed) return;
       root.dataset.modelSource = "failed";
       root.dataset.modelState = "failed";
+      startFallbackAnimation();
     };
 
     if (reducedMotion.matches) {
@@ -1233,14 +1194,7 @@ export function GlassWordScene() {
       };
       syncThemeColors();
 
-      const helloVariant = new URLSearchParams(window.location.search).get("hello");
-      const useCleanroomPreview = helloVariant === "cleanroom-v2";
-      root.dataset.helloVariant = useCleanroomPreview ? "cleanroom-v2" : "current";
-
-      let activeGeometry = useCleanroomPreview
-        ? createCleanroomHelloGeometry()
-        : createSculptedGeometry();
-      if (useCleanroomPreview) root.dataset.modelSource = "cleanroom-v2";
+      let activeGeometry = new THREE.BufferGeometry();
       const updateLocalYRange = (geometry: THREE.BufferGeometry) => {
         geometry.computeBoundingBox();
         if (!geometry.boundingBox) return;
@@ -1249,7 +1203,6 @@ export function GlassWordScene() {
           geometry.boundingBox.max.y,
         );
       };
-      updateLocalYRange(activeGeometry);
       const sculpture = new THREE.Mesh(activeGeometry, glassMaterial);
       sculpture.renderOrder = 2;
       const heroGroup = new THREE.Group();
@@ -1327,11 +1280,11 @@ export function GlassWordScene() {
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld(true);
         const viewHalfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * camera.position.z;
-        const desiredHelloWidth = width * 0.78;
-        const desiredHelloWorldWidth = desiredHelloWidth * (viewHalfHeight * 2) / height;
+        const desiredWordWidth = width * 0.78;
+        const desiredWordWorldWidth = desiredWordWidth * (viewHalfHeight * 2) / height;
         baseScale = narrow
           ? 0.39
-          : THREE.MathUtils.clamp(desiredHelloWorldWidth / 6.35, 0.82, 1.12);
+          : THREE.MathUtils.clamp(desiredWordWorldWidth / 6.35, 0.82, 1.12);
         verticalScale = 1;
         const shortViewportLift = narrow
           ? 0
@@ -1425,23 +1378,20 @@ export function GlassWordScene() {
         });
       };
 
-      if (!useCleanroomPreview) {
+      {
         const modelLoader = new GLTFLoader();
-        // Third-party asset credit: the local hello.gltf model is attributed to
-        // Haoqi Wen (https://haoqi.design/). Attribution does not imply
-        // affiliation, endorsement, or a licence to redistribute the asset.
         modelLoader.load(
-          "/model/hello.gltf",
+          "/model/hola.glb",
           (gltf) => {
             if (disposed) return;
             try {
-              const downloadedGeometry = createDownloadedHelloGeometry(gltf.scene);
+              const wordGeometry = createWordGeometry(gltf.scene, 6.35);
               const previousGeometry = activeGeometry;
-              activeGeometry = downloadedGeometry;
-              sculpture.geometry = downloadedGeometry;
+              activeGeometry = wordGeometry;
+              sculpture.geometry = wordGeometry;
               previousGeometry.dispose();
-              updateLocalYRange(downloadedGeometry);
-              markModelReady("downloaded-gltf");
+              updateLocalYRange(wordGeometry);
+              markModelReady("hola-original");
               resize();
               activeUntil = performance.now() + 900;
               wakeAnimation();
@@ -1524,7 +1474,6 @@ export function GlassWordScene() {
         renderer.setRenderTarget(null);
       }
       shaderPassesReady = true;
-      if (useCleanroomPreview) markModelReady("cleanroom-v2");
       tryMarkSceneReady();
 
       const handleContextLost = (event: Event) => {
@@ -1824,8 +1773,7 @@ export function GlassWordScene() {
       data-glass-theme="loading"
       data-glass-tint-accent="loading"
       data-glass-tint-base="loading"
-      data-glass-word="hello"
-      data-hello-variant="loading"
+      data-glass-word="hola"
       data-light-angle="0"
       data-light-x="4"
       data-light-y="9"
@@ -1852,7 +1800,7 @@ export function GlassWordScene() {
     >
       <canvas ref={canvasRef} />
       <div className="glassFallback" data-glass-fallback>
-          <svg viewBox="0 -980 2180 1080" role="presentation">
+          <svg viewBox={HOLA_VIEWBOX} role="presentation" fillRule="evenodd" clipRule="evenodd">
             <defs>
               <linearGradient id="fallback-glass-face" x1="0" y1="0" x2="0.75" y2="1">
                 <stop offset="0" stopColor="var(--hero-glass-tint-base)" stopOpacity="0.78" />
@@ -1867,14 +1815,14 @@ export function GlassWordScene() {
                 <stop offset="1" stopColor="#fff" stopOpacity="0" />
               </linearGradient>
               <clipPath id="fallback-glass-clip">
-                <path d={SCULPTED_WORD_PATH} />
+                <path d={HOLA_PATH} />
               </clipPath>
             </defs>
-            <path className="glassFallbackDepth" d={SCULPTED_WORD_PATH} />
-            <path className="glassFallbackFace" d={SCULPTED_WORD_PATH} />
+            <path className="glassFallbackDepth" d={HOLA_PATH} />
+            <path className="glassFallbackFace" d={HOLA_PATH} />
             <g className="glassFallbackSheen" clipPath="url(#fallback-glass-clip)">
-              <rect x="300" y="-1200" width="220" height="1600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 410 -400)" />
-              <rect x="1290" y="-1200" width="310" height="1600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 1445 -400)" />
+              <rect x="100" y="-400" width="42" height="600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 121 -100)" />
+              <rect x="460" y="-400" width="62" height="600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 491 -100)" />
             </g>
           </svg>
       </div>
