@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const requiredFiles = [
   "out/index.html",
-  "out/model/welcome.glb",
   "out/404.html",
   "out/robots.txt",
   "out/sitemap.xml",
@@ -26,14 +25,7 @@ if (missingFiles.length > 0) {
   throw new Error(`GitHub Pages export is incomplete:\n${missingFiles.join("\n")}`);
 }
 
-if (existsSync(resolve(root, "out/model/hello.gltf"))) {
-  throw new Error("The removed borrowed model must not be exported.");
-}
-
 const homeHtml = readFileSync(resolve(root, "out/index.html"), "utf8");
-if (!homeHtml.includes("/model/welcome.glb") || homeHtml.includes("/model/hello.gltf")) {
-  throw new Error("Homepage preload must use only the generated Welcome model.");
-}
 const sitemap = readFileSync(resolve(root, "out/sitemap.xml"), "utf8");
 const robots = readFileSync(resolve(root, "out/robots.txt"), "utf8");
 const googleVerification = readFileSync(resolve(root, "out/googlecc418591f1204068.html"), "utf8").trim();

@@ -2,12 +2,12 @@
 
 [View the live portfolio](https://legend398.github.io/)
 
-A software-engineering portfolio built from verified CV and project evidence. The homepage pairs plain-language project stories and genuine product media with a rounded glass `Welcome` word powered by Three.js. The word stays sharp at rest and applies a local optical ripple only where the pointer intersects it; reduced-motion and no-WebGL sessions receive a readable static fallback.
+A software-engineering portfolio built from verified CV and project evidence. The homepage pairs plain-language project stories and genuine product media with a sculpted glass word powered by Three.js. The word stays sharp at rest and applies a local optical ripple only where the pointer intersects it; reduced-motion and no-WebGL sessions receive a readable static fallback.
 
 ## Run locally
 
 ```powershell
-npm ci
+npm install
 npm run dev
 ```
 
@@ -23,25 +23,9 @@ The `main` branch deploys automatically through `.github/workflows/deploy-pages.
 npm run verify:pages
 ```
 
-## Rebuild the Welcome sculpture
-
-Requires Node.js 24, matching `package.json`. The bundled Pacifico font and its
-SIL OFL 1.1 license make the model reproducible without a network request:
-
-```sh
-npm run build:welcome
-npm run verify:welcome
-```
-
-This regenerates both `public/model/welcome.glb` and the matching static SVG
-outline in `components/hero/WelcomePath.ts`. Failed or stalled model downloads
-switch to the static word after at most 10 seconds, and the page loader always
-releases. Reduced-motion and no-JavaScript visitors also get the static word.
-
 ## Verify
 
 ```powershell
-npx playwright install chromium
 npm run verify
 ```
 

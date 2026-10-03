@@ -22,10 +22,10 @@ const jsonLd = {
 };
 
 export default function HomePage() {
-  preload("/model/welcome.glb", {
+  preload("/model/hello.gltf", {
     as: "fetch",
     crossOrigin: "anonymous",
-    type: "model/gltf-binary",
+    type: "model/gltf+json",
   });
 
   return (

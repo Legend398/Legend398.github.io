@@ -286,7 +286,7 @@
     rotateY(calc(var(--pointer-x) * 4deg))
     rotate(-1.5deg);
   transition: opacity 500ms ease;
-  width: min(1140px, 82vw);
+  width: min(930px, 64vw);
 }
 
 .studioHero :global(.glassFallback svg) {
@@ -296,7 +296,6 @@
     drop-shadow(-3px -4px 7px rgba(255, 255, 255, 0.5));
   overflow: visible;
   width: 100%;
-  transform: scaleY(1.24);
 }
 
 .studioHero :global(.glassFallbackDepth) {
@@ -1236,11 +1235,11 @@
   .studioHero :global(.glassFallback) {
     left: 50%;
     top: 50.5%;
-    width: 90vw;
+    width: 112vw;
   }
 
   .studioHero :global(.glassFallback svg) {
-    margin-left: 0;
+    margin-left: -1vw;
     width: 100%;
   }
 
