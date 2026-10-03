@@ -15,30 +15,45 @@ const paths = [
   [
     [0.12,0.58,0.22], [0.23,0.92,0.22], [0.52,1.20,0.23],
     [0.89,1.17,0.22], [1.07,0.83,0.15], [1.06,0.43,0.10], [1.28,0.20,0.08], [1.65,0.32,0.00],
-    [1.83,0.72,-0.26], [2.02,1.03,-0.30], [2.49,1.06,-0.30], [2.76,0.90,-0.12],
-    [2.75,0.46,0.05], [2.45,0.20,0.27], [2.04,0.25,0.35],
-    [1.86,0.59,0.40], [2.03,1.04,0.45], [2.43,1.19,0.44], [2.76,1.12,0.23],
-    [3.57,1.32,-0.25], [3.89,2.06,-0.31], [3.95,2.46,-0.12],
-    [3.74,2.66,0.13], [3.43,2.40,0.34], [3.19,1.71,0.44],
-    [3.15,0.94,0.47], [3.33,0.38,0.47], [3.69,0.20,0.36], [4.08,0.43,0.00],
-    [4.35,0.68,-0.29], [4.48,1.02,-0.30], [4.93,1.04,-0.28], [5.15,0.93,-0.08],
-    [5.19,0.51,0.14], [4.91,0.22,0.28], [4.56,0.23,0.35],
-    [4.42,0.56,0.42], [4.51,0.98,0.47], [4.88,1.19,0.44],
-    [5.46,1.02,0.42], [5.43,0.63,0.46], [5.49,0.26,0.45],
-    [5.81,0.25,0.40], [6.16,0.51,0.22], [6.47,0.79,0.03],
+    [1.85,0.65,-0.08],
+  ],
+  [
+    [2.38,1.23,0.13], [2.69,1.06,0.09], [2.75,0.69,0.10],
+    [2.54,0.31,0.20], [2.18,0.16,0.27], [1.90,0.31,0.29],
+    [1.80,0.69,0.25], [2.03,1.07,0.19],
+  ],
+  [
+    [2.56,0.27,-0.08], [3.06,0.73,-0.31],
+    [3.50,1.53,-0.28], [3.90,2.10,-0.26], [3.93,2.49,-0.09],
+    [3.67,2.69,0.15], [3.25,2.43,0.34], [3.00,1.75,0.44],
+    [2.99,0.96,0.47], [3.14,0.38,0.47], [3.45,0.20,0.36], [3.87,0.43,0.00],
+    [4.04,0.72,-0.08],
+  ],
+  [
+    [4.59,1.25,0.13], [4.86,1.09,0.09], [4.94,0.71,0.10],
+    [4.71,0.32,0.20], [4.36,0.16,0.27], [4.10,0.31,0.29],
+    [4.01,0.69,0.25], [4.27,1.07,0.19],
+  ],
+  [
+    [4.84,1.00,0.06], [4.92,0.76,0.17], [4.99,0.37,0.32],
+    [5.21,0.22,0.30], [5.57,0.34,0.22], [5.87,0.59,0.07], [6.03,0.77,0.00],
   ],
 ];
+// The o and a bowls close on themselves. Their connections sit behind the
+// letters rather than cutting a bar through either counter.
+const closedPaths = new Set([2,4]);
 const radius = 0.205;
 const radialSegments = 28;
 const capSegments = 9;
 const positions = [], normals = [], indices = [], silhouetteSamples = [];
 const strokeRanges = [];
 
-function roundedPath(points) {
-  const guide = new CatmullRomCurve3(points.map(([x,y,z]) => new Vector3(x,y*0.90,z)), false, "centripetal");
+function roundedPath(points, closed) {
+  const guide = new CatmullRomCurve3(points.map(([x,y,z]) => new Vector3(x,y*0.90,z)), closed, "centripetal");
   guide.arcLengthDivisions = 4096;
   const count = Math.ceil(guide.getLength() / 0.0225);
   const samples = guide.getSpacedPoints(count);
+  if (closed) samples.pop();
   const sigma = radius / (guide.getLength()/count);
   const reach = Math.ceil(sigma*3);
   // Smooth curvature in arc-length space. This removes tight pinches between
@@ -47,21 +62,23 @@ function roundedPath(points) {
     const sum = new Vector3(); let total = 0;
     for (let offset=-reach;offset<=reach;offset++) {
       const weight = Math.exp(-0.5*(offset/sigma)**2), j = i+offset;
-      const p = j<0 ? samples[0].clone().addScaledVector(samples[1].clone().sub(samples[0]),j)
+      const p = closed ? samples[((j%count)+count)%count]
+        : j<0 ? samples[0].clone().addScaledVector(samples[1].clone().sub(samples[0]),j)
         : j>count ? samples[count].clone().addScaledVector(samples[count].clone().sub(samples[count-1]),j-count)
         : samples[j];
       sum.addScaledVector(p,weight); total+=weight;
     }
     return sum.divideScalar(total);
   });
-  return new CatmullRomCurve3(smooth, false, "centripetal");
+  return new CatmullRomCurve3(smooth, closed, "centripetal");
 }
 
-for (const points of paths) {
-  const curve = roundedPath(points);
+for (const [pathIndex, points] of paths.entries()) {
+  const closed = closedPaths.has(pathIndex);
+  const curve = roundedPath(points, closed);
   curve.arcLengthDivisions = 4096;
   const segments = Math.ceil(curve.getLength() / 0.037);
-  const frames = curve.computeFrenetFrames(segments, false);
+  const frames = curve.computeFrenetFrames(segments, closed);
   const rings = [];
   const firstVertex = positions.length / 3;
 
@@ -81,35 +98,40 @@ for (const points of paths) {
   }
 
   const begin = curve.getPointAt(0), end = curve.getPointAt(1);
-  positions.push(...begin.clone().addScaledVector(frames.tangents[0], -radius).toArray());
-  normals.push(...frames.tangents[0].clone().negate().toArray());
-  for (let c = 1; c < capSegments; c++) {
+  if (!closed) {
+    positions.push(...begin.clone().addScaledVector(frames.tangents[0], -radius).toArray());
+    normals.push(...frames.tangents[0].clone().negate().toArray());
+  }
+  for (let c = 1; !closed && c < capSegments; c++) {
     const angle = c / capSegments * Math.PI * 0.5;
     ring(begin.clone().addScaledVector(frames.tangents[0], -radius*Math.cos(angle)),
       frames.normals[0], frames.binormals[0], frames.tangents[0], Math.sin(angle), -Math.cos(angle));
   }
-  for (let i = 0; i <= segments; i++) {
+  for (let i = 0; i < segments + (closed ? 0 : 1); i++) {
     const p = curve.getPointAt(i / segments);
     ring(p, frames.normals[i], frames.binormals[i], frames.tangents[i], 1, 0);
     silhouetteSamples.push([p.x,p.y]);
   }
-  for (let c = 1; c < capSegments; c++) {
+  for (let c = 1; !closed && c < capSegments; c++) {
     const angle = c / capSegments * Math.PI * 0.5;
     ring(end.clone().addScaledVector(frames.tangents[segments], radius*Math.sin(angle)),
       frames.normals[segments], frames.binormals[segments], frames.tangents[segments], Math.cos(angle), Math.sin(angle));
   }
   const finalVertex = positions.length / 3;
-  positions.push(...end.clone().addScaledVector(frames.tangents[segments], radius).toArray());
-  normals.push(...frames.tangents[segments].toArray());
+  if (!closed) {
+    positions.push(...end.clone().addScaledVector(frames.tangents[segments], radius).toArray());
+    normals.push(...frames.tangents[segments].toArray());
+  }
   for (let j = 0; j < radialSegments; j++) {
     const k = (j+1) % radialSegments;
-    indices.push(firstVertex,rings[0][k],rings[0][j]);
-    for (let i = 0; i < rings.length - 1; i++) {
-      indices.push(rings[i][j],rings[i][k],rings[i+1][j], rings[i][k],rings[i+1][k],rings[i+1][j]);
+    if (!closed) indices.push(firstVertex,rings[0][k],rings[0][j]);
+    for (let i = 0; i < rings.length - (closed ? 0 : 1); i++) {
+      const next = rings[(i+1)%rings.length];
+      indices.push(rings[i][j],rings[i][k],next[j], rings[i][k],next[k],next[j]);
     }
-    indices.push(rings.at(-1)[j],rings.at(-1)[k],finalVertex);
+    if (!closed) indices.push(rings.at(-1)[j],rings.at(-1)[k],finalVertex);
   }
-  strokeRanges.push({firstVertex,finalVertex,segments});
+  strokeRanges.push({firstVertex,finalVertex,segments,closed});
 }
 
 // Consistent outward winding; the sweep's analytic normals remain continuous.

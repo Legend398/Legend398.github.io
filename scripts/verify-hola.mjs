@@ -56,8 +56,8 @@ for(let i=0;i<indices.length;i+=3) {
     +positions[a+2]*(positions[b]*positions[c+1]-positions[b+1]*positions[c]);
 }
 assert.ok([...edges.values()].every(count=>count===2),"The glass surface must be watertight");
-assert.equal(new Set(Array.from(parents,(_,i)=>parent(i))).size,2,"Keep the h ascender separate from the following pen path");
-assert.equal(positions.length/3-edges.size+indices.length/3,4,"Both swept strokes must have closed end caps");
+assert.equal(new Set(Array.from(parents,(_,i)=>parent(i))).size,6,"Keep the letter bowls and connecting strokes independently rounded");
+assert.equal(positions.length/3-edges.size+indices.length/3,8,"Four capped strokes and two closed letter bowls must remain watertight");
 assert.ok(volume>0,"The faces must point outwards");
 assert.ok(invertedArea/surfaceArea<1e-7,"Rounded bends must not fold the tube surface inside out");
 assert.ok(!existsSync(resolve(root,"public/model/hello.gltf")),"The imported asset must not ship");
