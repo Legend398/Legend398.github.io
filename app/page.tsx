@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { preload } from "react-dom";
-import { GlassWordScene } from "@/components/GlassWordScene";
+import { ParticleWordScene } from "@/components/ParticleWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
@@ -22,10 +22,10 @@ const jsonLd = {
 };
 
 export default function HomePage() {
-  preload("/model/hola.glb", {
+  preload("/model/hello-particles.bin", {
     as: "fetch",
     crossOrigin: "anonymous",
-    type: "model/gltf-binary",
+    type: "application/octet-stream",
   });
 
   return (
@@ -33,7 +33,7 @@ export default function HomePage() {
       <main className={styles.home} id="main-content" data-home-root>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <section className={`${styles.studioHero} ${styles.kineticHero}`} aria-labelledby="hero-title" data-v8-hero>
-          <GlassWordScene />
+          <ParticleWordScene />
           <div className={styles.kineticGrid} aria-hidden="true" />
 
           <div className={styles.studioHeroMeta}>

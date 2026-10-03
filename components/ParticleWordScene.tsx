@@ -2,14 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { HOLA_PATH, HOLA_VIEWBOX } from "@/components/hero/HolaPath";
+import Image from "next/image";
+import { ParticleWord } from "@/components/hero/ParticleWord";
 import { HeroFlarePass, HeroFluidPass } from "@/components/hero/HeroPostProcessing";
 
-type WordModelSource = "hola-original";
+type WordModelSource = "hello-particles";
 
-const RIPPLE_COUNT = 4;
 const BACKGROUND_SPLAT_COUNT = 4;
 const STICKER_COUNT = 14;
 const INITIAL_STICKER_BATCH = 3;
@@ -17,28 +15,6 @@ const HERO_SCENE_READY_EVENT = "hero-scene-ready";
 const STICKER_CAPACITY = 84;
 const STICKER_COLUMNS = 4;
 const STICKER_ROWS = 4;
-const GLASS_THEME_SETTINGS = {
-  dark: {
-    brightness: 0.6,
-    contrast: 0.98,
-    diffuseness: 0.05,
-    fresnelPower: 3,
-    fresnelStrength: 0.72,
-    shininess: 100,
-    tintThicknessMaxAlpha: 0.4,
-    tintThicknessMinAlpha: 1,
-  },
-  light: {
-    brightness: 0.74,
-    contrast: 1.04,
-    diffuseness: 0.035,
-    fresnelPower: 1.45,
-    fresnelStrength: 0.34,
-    shininess: 156,
-    tintThicknessMaxAlpha: 0.72,
-    tintThicknessMinAlpha: 0.98,
-  },
-} as const;
 const STICKER_PATHS = [
   "/sticker_img/original/holographic-floppy-comet.png",
   "/sticker_img/original/warped-404.png",
@@ -55,254 +31,6 @@ const STICKER_PATHS = [
   "/sticker_img/original/checkerboard-butterfly.png",
   "/sticker_img/original/pixel-mail-window.png",
 ] as const;
-
-const GLASS_VERTEX_SHADER = `
-  varying vec3 vWorldNormal;
-  varying vec3 vEyeVector;
-  varying float vLocalY;
-
-  void main() {
-    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * viewMatrix * worldPosition;
-    vWorldNormal = normalize(modelMatrix * vec4(normal, 0.0)).xyz;
-    vEyeVector = normalize(worldPosition.xyz - cameraPosition);
-    vLocalY = position.y;
-  }
-`;
-
-const GLASS_FRAGMENT_SHADER = `
-  precision highp float;
-
-  uniform sampler2D uScene;
-  uniform sampler2D uMotionField;
-  uniform vec2 uResolution;
-  uniform vec2 uMotionTexelStep;
-  uniform vec3 uLight;
-  uniform vec2 uHoverUv;
-  uniform float uHoverStrength;
-  uniform vec2 uCursorVelocity;
-  uniform float uCursorForce;
-  uniform float uOpticalCoupling;
-  uniform vec2 uRippleUv[${RIPPLE_COUNT}];
-  uniform float uRippleAges[${RIPPLE_COUNT}];
-  uniform vec2 uLocalYRange;
-  uniform int uSampleCount;
-  uniform float uTime;
-  uniform vec3 uTintAccent;
-  uniform vec3 uTintBase;
-  uniform float uBrightness;
-  uniform float uChromaticAberration;
-  uniform float uContrast;
-  uniform float uDiffuseness;
-  uniform float uFresnelPower;
-  uniform vec3 uFresnelSideDir;
-  uniform float uFresnelStrength;
-  uniform float uGamma;
-  uniform float uRefractPower;
-  uniform float uSaturation;
-  uniform float uShininess;
-  uniform float uSpecularStrength;
-  uniform float uTintMix;
-  uniform float uTintThicknessMaxAlpha;
-  uniform float uTintThicknessMinAlpha;
-
-  varying vec3 vWorldNormal;
-  varying vec3 vEyeVector;
-  varying float vLocalY;
-
-  float random2d(vec2 value) {
-    return fract(sin(dot(value, vec2(12.9898, 78.233))) * 43758.5453);
-  }
-
-  vec2 decodeFieldMotion(vec2 packedMotion) {
-    return packedMotion * 1.1 - 0.55;
-  }
-
-  vec3 adjustSaturation(vec3 rgb, float amount) {
-    vec3 luminanceWeights = vec3(0.2125, 0.7154, 0.0721);
-    vec3 intensity = vec3(dot(rgb, luminanceWeights));
-    return mix(intensity, rgb, amount);
-  }
-
-  float glassFresnel(vec3 eyeDirection, vec3 normal, float power) {
-    return pow(1.0 - abs(dot(eyeDirection, normal)), power);
-  }
-
-  float glassSpecular(vec3 light, vec3 normal, vec3 eyeDirection, float shininess, float diffuseness) {
-    vec3 lightDirection = normalize(-light);
-    vec3 halfDirection = normalize(eyeDirection + lightDirection);
-    float diffuse = max(0.0, dot(normal, lightDirection));
-    float highlight = pow(abs(dot(normal, halfDirection)), shininess);
-    return highlight + diffuse * diffuseness;
-  }
-
-  void main() {
-    vec2 uv = gl_FragCoord.xy / uResolution;
-    vec3 normal = normalize(vWorldNormal);
-    vec3 eyeDirection = normalize(vEyeVector);
-    float noise = random2d(uv) * 0.025;
-    vec3 color = vec3(0.0);
-
-    vec2 rippleOffset = vec2(0.0);
-    float rippleHighlight = 0.0;
-    float screenAspect = uResolution.x / max(uResolution.y, 1.0);
-
-    vec4 flowCenter = texture2D(uMotionField, uv);
-    vec4 flowLeft = texture2D(uMotionField, uv - vec2(uMotionTexelStep.x, 0.0));
-    vec4 flowRight = texture2D(uMotionField, uv + vec2(uMotionTexelStep.x, 0.0));
-    vec4 flowDown = texture2D(uMotionField, uv - vec2(0.0, uMotionTexelStep.y));
-    vec4 flowUp = texture2D(uMotionField, uv + vec2(0.0, uMotionTexelStep.y));
-    vec2 fieldMotion = decodeFieldMotion(flowCenter.xy);
-    vec2 fieldGradient = vec2(flowRight.z - flowLeft.z, flowUp.z - flowDown.z);
-    float fieldResponse = smoothstep(0.06, 0.56, flowCenter.z) * uOpticalCoupling;
-    vec2 fieldUvMotion = vec2(fieldMotion.x / screenAspect, fieldMotion.y);
-    vec2 fieldUvNormal = vec2(fieldGradient.x / screenAspect, fieldGradient.y);
-    normal = normalize(normal + vec3(
-      (fieldUvNormal * 1.18 + fieldUvMotion * 0.28) * fieldResponse,
-      flowCenter.w * fieldResponse * 0.14
-    ));
-    rippleOffset += (
-      fieldUvMotion * 0.038
-      + fieldUvNormal * 0.018
-    ) * fieldResponse;
-    rippleHighlight += fieldResponse * (length(fieldGradient) * 0.52 + flowCenter.w * 0.12);
-
-    vec2 cursorDelta = uv - uHoverUv;
-    cursorDelta.x *= screenAspect;
-    vec2 cursorDirection = normalize(
-      vec2(uCursorVelocity.x * screenAspect, uCursorVelocity.y) + vec2(0.00001)
-    );
-    vec2 cursorTangent = vec2(-cursorDirection.y, cursorDirection.x);
-    float cursorAlong = dot(cursorDelta, cursorDirection) * 0.84;
-    float cursorAcross = dot(cursorDelta, cursorTangent) * 1.12;
-    float cursorDistance = length(vec2(cursorAlong, cursorAcross));
-    float normalizedCursorDistance = clamp(cursorDistance / 0.1088, 0.0, 1.0);
-    float cursorEnvelope = 1.0 - smoothstep(0.82, 1.0, normalizedCursorDistance);
-    float bubbleDepth = sqrt(max(
-      0.0,
-      1.0 - normalizedCursorDistance * normalizedCursorDistance
-    ));
-    float bubbleShell = pow(1.0 - bubbleDepth, 0.7) * cursorEnvelope;
-    vec2 cursorRadial = normalize(cursorDelta + vec2(0.00001));
-    cursorRadial.x /= screenAspect;
-    vec2 cursorFlowUv = vec2(cursorDirection.x / screenAspect, cursorDirection.y);
-    float cursorWobble = 1.0 + sin(
-      atan(cursorDelta.y, cursorDelta.x) * 3.0 + uTime * 7.0
-    ) * 0.08;
-    float bubbleCore = cursorEnvelope * bubbleDepth * uCursorForce;
-    normal = normalize(normal + vec3(
-      cursorRadial * bubbleShell * cursorWobble * uCursorForce * 1.34,
-      bubbleCore * 0.31
-    ));
-    rippleOffset += (
-      cursorRadial * bubbleShell * cursorWobble * 0.058
-      + cursorFlowUv * bubbleShell * 0.021
-    ) * uCursorForce;
-    float bubbleRim = smoothstep(0.48, 0.92, normalizedCursorDistance)
-      * (1.0 - smoothstep(0.90, 1.0, normalizedCursorDistance));
-    rippleHighlight += bubbleRim * cursorEnvelope * uCursorForce * 0.18;
-    for (int rippleIndex = 0; rippleIndex < ${RIPPLE_COUNT}; rippleIndex++) {
-      float age = uRippleAges[rippleIndex];
-      vec2 rippleDelta = uv - uRippleUv[rippleIndex];
-      rippleDelta.x *= screenAspect;
-      float distanceFromHit = length(rippleDelta);
-      float ringRadius = 0.018 + age * 0.12;
-      float ringEnvelope = exp(-age * 4.1) * exp(-abs(distanceFromHit - ringRadius) * 34.0);
-      float ringWave = sin((distanceFromHit - ringRadius) * 72.0) * ringEnvelope;
-      vec2 ringDirection = normalize(rippleDelta + vec2(0.00001));
-      ringDirection.x /= screenAspect;
-      rippleOffset += ringDirection * ringWave * 0.0062;
-      rippleHighlight += abs(ringWave) * 0.18;
-    }
-
-    vec3 refractR = refract(eyeDirection, normal, 1.0 / 1.15);
-    vec3 refractG = refract(eyeDirection, normal, 1.0 / 1.18);
-    vec3 refractB = refract(eyeDirection, normal, 1.0 / 1.22);
-    float loopCount = float(uSampleCount);
-
-    if (uSampleCount <= 3) {
-      for (int index = 0; index < 3; index++) {
-        if (index < uSampleCount) {
-          float slide = float(index) / loopCount * 0.1 + noise;
-          float offset = (uRefractPower + slide) * uChromaticAberration;
-          color.r += texture2D(uScene, uv + rippleOffset + refractR.xy * offset).r;
-          color.g += texture2D(uScene, uv + rippleOffset + refractG.xy * offset).g;
-          color.b += texture2D(uScene, uv + rippleOffset + refractB.xy * offset).b;
-        }
-      }
-    } else {
-      vec3 refractY = refract(eyeDirection, normal, 1.0 / 1.16);
-      vec3 refractC = refract(eyeDirection, normal, 1.0 / 1.22);
-      vec3 refractP = refract(eyeDirection, normal, 1.0 / 1.22);
-      for (int index = 0; index < 6; index++) {
-        if (index < uSampleCount) {
-          float slide = float(index) / loopCount * 0.1 + noise;
-          float offsetR = (uRefractPower + slide) * uChromaticAberration;
-          float offsetY = (uRefractPower + slide) * uChromaticAberration;
-          float offsetG = (uRefractPower + slide * 2.0) * uChromaticAberration;
-          float offsetC = (uRefractPower + slide * 2.5) * uChromaticAberration;
-          float offsetB = (uRefractPower + slide * 3.0) * uChromaticAberration;
-          float offsetP = (uRefractPower + slide) * uChromaticAberration;
-
-          float red = texture2D(uScene, uv + rippleOffset + refractR.xy * offsetR).r * 0.5;
-          vec3 yellowSample = texture2D(uScene, uv + rippleOffset + refractY.xy * offsetY).rgb;
-          float yellow = (yellowSample.r * 2.0 + yellowSample.g * 2.0 - yellowSample.b) / 6.0;
-          float green = texture2D(uScene, uv + rippleOffset + refractG.xy * offsetG).g * 0.5;
-          vec3 cyanSample = texture2D(uScene, uv + rippleOffset + refractC.xy * offsetC).rgb;
-          float cyan = (cyanSample.g * 2.0 + cyanSample.b * 2.0 - cyanSample.r) / 6.0;
-          float blue = texture2D(uScene, uv + rippleOffset + refractB.xy * offsetB).b * 0.5;
-          vec3 purpleSample = texture2D(uScene, uv + rippleOffset + refractP.xy * offsetP).rgb;
-          float purple = (purpleSample.b * 2.0 + purpleSample.r * 2.0 - purpleSample.g) / 6.0;
-
-          color.r += red + (purple * 2.0 + yellow * 2.0 - cyan) / 3.0;
-          color.g += green + (yellow * 2.0 + cyan * 2.0 - purple) / 3.0;
-          color.b += blue + (cyan * 2.0 + purple * 2.0 - yellow) / 3.0;
-        }
-      }
-    }
-    color /= loopCount;
-    color = mix(texture2D(uScene, uv + rippleOffset * 0.35).rgb, color, 0.84);
-
-    vec2 hoverDelta = uv - uHoverUv;
-    hoverDelta.x *= uResolution.x / max(uResolution.y, 1.0);
-    float hoverMask = exp(-dot(hoverDelta, hoverDelta) * 59.375) * uHoverStrength;
-
-    color = adjustSaturation(color, uSaturation);
-    color *= uBrightness;
-    color = (color - 0.5) * uContrast + 0.5;
-    color = pow(max(color, 0.0), vec3(1.0 / max(uGamma, 0.0001)));
-
-    float ySpan = max(uLocalYRange.y - uLocalYRange.x, 0.00001);
-    float yMix = clamp((vLocalY - uLocalYRange.x) / ySpan, 0.0, 1.0);
-    vec3 tint = mix(uTintBase, uTintAccent, yMix);
-    float facing = abs(dot(normal, eyeDirection));
-    float thicknessMask = clamp(1.0 - facing, 0.0, 1.0);
-    float tintAlpha = mix(uTintThicknessMaxAlpha, uTintThicknessMinAlpha, thicknessMask);
-    vec3 transmission = pow(clamp(tint, 0.001, 1.0), vec3(uTintMix));
-    color = mix(color, color * transmission, tintAlpha * 0.9);
-
-    float specularLight = glassSpecular(uLight, normal, eyeDirection, uShininess, uDiffuseness);
-    color += specularLight * uSpecularStrength;
-    float fresnel = glassFresnel(eyeDirection, normal, uFresnelPower);
-    float sideMask = smoothstep(-0.5, 0.5, dot(normal, normalize(uFresnelSideDir)));
-    vec3 rimTransmission = mix(
-      vec3(0.48, 0.66, 0.84),
-      vec3(0.68, 0.84, 0.98),
-      sideMask
-    );
-    color = mix(color, color * rimTransmission, fresnel * 0.46);
-    color += fresnel * sideMask * uFresnelStrength;
-    color += hoverMask * (0.012 + fresnel * 0.035) * vec3(0.72, 0.9, 1.0);
-
-    vec2 sparkleCell = floor(gl_FragCoord.xy / 2.5);
-    float sparkleField = step(0.86, random2d(sparkleCell));
-    float sparkleMask = smoothstep(0.16, 0.72, specularLight + fresnel * sideMask * 0.25);
-    color += sparkleField * sparkleMask * (0.2 + hoverMask * 0.14);
-    color += rippleHighlight * vec3(0.72, 0.9, 1.0);
-
-    gl_FragColor = vec4(max(color, 0.0), 1.0);
-  }
-`;
 
 const STICKER_VERTEX_SHADER = `
   attribute vec4 aUvRect;
@@ -624,45 +352,7 @@ function createStickerField(camera: THREE.PerspectiveCamera): StickerField {
   };
 }
 
-function createWordGeometry(scene: THREE.Object3D, targetWidth: number) {
-  scene.updateMatrixWorld(true);
-  const parts: THREE.BufferGeometry[] = [];
-
-  scene.traverse((child) => {
-    if (!(child instanceof THREE.Mesh) || !child.geometry) return;
-    const part = child.geometry.clone();
-    part.applyMatrix4(child.matrixWorld);
-    parts.push(part);
-  });
-
-  if (parts.length === 0) {
-    throw new Error("The hola model has no mesh geometry");
-  }
-
-  let geometry: THREE.BufferGeometry;
-  if (parts.length === 1) {
-    geometry = parts[0];
-  } else {
-    const merged = mergeGeometries(parts, false);
-    parts.forEach((part) => part.dispose());
-    if (!merged) throw new Error("The hola model could not be merged");
-    geometry = merged;
-  }
-
-  geometry.center();
-  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  const width = geometry.boundingBox
-    ? geometry.boundingBox.max.x - geometry.boundingBox.min.x
-    : 1;
-  const scale = targetWidth / Math.max(width, 0.00001);
-  geometry.scale(scale, scale, scale);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
-export function GlassWordScene() {
+export function ParticleWordScene() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -701,14 +391,10 @@ export function GlassWordScene() {
     const backgroundSplatAges = Array.from({ length: BACKGROUND_SPLAT_COUNT }, () => 9);
     let backgroundSplatSlot = 0;
     let lastBackgroundSplat = -10;
-    let pointerDirty = false;
-    let forceSplash = false;
     let burstRequested = false;
     let pointerInsideHero = false;
     let pointerOverGlass = false;
-    let hoverStrength = 0;
     let glassForce = 0;
-    const glassVelocity = new THREE.Vector2(1, 0);
     let fluidEnergy = 0;
     let lastPointerMoveAt = -10_000;
     let scrollProgress = 0;
@@ -721,8 +407,6 @@ export function GlassWordScene() {
     const resetPointer = () => {
       pointerInsideHero = false;
       pointerOverGlass = false;
-      pointerDirty = false;
-      forceSplash = false;
       burstRequested = false;
       fluidPointerDelta.set(0, 0);
       targetPointer.set(0, 0);
@@ -779,7 +463,6 @@ export function GlassWordScene() {
       pointerUv.copy(nextUv);
       pointerNdc.set(nextUv.x * 2 - 1, nextUv.y * 2 - 1);
       targetPointer.copy(pointerNdc);
-      pointerDirty = true;
       activeUntil = performance.now() + 3600;
 
       if (
@@ -807,14 +490,17 @@ export function GlassWordScene() {
         event.clientY < rect.top || event.clientY > rect.bottom
       ) return;
       updatePointer(event);
-      forceSplash = true;
       burstRequested = true;
-      pointerDirty = true;
       activeUntil = performance.now() + 3000;
       wakeAnimation();
     };
+    const releasePointer = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") resetPointer();
+    };
     window.addEventListener("pointermove", updatePointer, { passive: true });
     window.addEventListener("pointerdown", pressPointer, { passive: true });
+    window.addEventListener("pointerup", releasePointer, { passive: true });
+    window.addEventListener("pointercancel", resetPointer, { passive: true });
     window.addEventListener("blur", resetPointer);
     document.documentElement.addEventListener("pointerleave", resetPointer, { passive: true });
 
@@ -865,6 +551,8 @@ export function GlassWordScene() {
     };
 
     const startFallbackAnimation = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
       setFallback();
       wakeAnimation = () => {};
     };
@@ -894,6 +582,8 @@ export function GlassWordScene() {
         document.removeEventListener("visibilitychange", handleVisibility);
         window.removeEventListener("pointermove", updatePointer);
         window.removeEventListener("pointerdown", pressPointer);
+        window.removeEventListener("pointerup", releasePointer);
+        window.removeEventListener("pointercancel", resetPointer);
         window.removeEventListener("blur", resetPointer);
         document.documentElement.removeEventListener("pointerleave", resetPointer);
       };
@@ -931,14 +621,9 @@ export function GlassWordScene() {
       const clock = new THREE.Clock();
       const drawingBufferSize = new THREE.Vector2(1, 1);
       let previousElapsed = 0;
-      let rippleSlot = 0;
-      let lastWordSplash = -10;
       let isNarrow = false;
       let stickerField: StickerField | undefined;
       let motionFrame = 0;
-
-      const rippleUv = Array.from({ length: RIPPLE_COUNT }, () => new THREE.Vector2(-2, -2));
-      const rippleAges = Array.from({ length: RIPPLE_COUNT }, () => 9);
 
       const sceneTarget = new THREE.WebGLRenderTarget(1, 1, {
         type: THREE.UnsignedByteType,
@@ -1101,64 +786,20 @@ export function GlassWordScene() {
       backgroundScene.add(background);
       disposables.push(backgroundMaterial, screenGeometry);
 
-      const glassResolution = new THREE.Vector2(1, 1);
-      const glassMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-          uScene: { value: sceneTarget.texture },
-          uMotionField: { value: fluidPass.getMotionTexture() },
-          uResolution: { value: glassResolution },
-          uMotionTexelStep: { value: new THREE.Vector2(1, 1) },
-          uLight: { value: pointerLightWorld },
-          uHoverUv: { value: pointerUv },
-          uHoverStrength: { value: 0 },
-          uCursorVelocity: { value: glassVelocity },
-          uCursorForce: { value: 0 },
-          uOpticalCoupling: { value: 0 },
-          uRippleUv: { value: rippleUv },
-          uRippleAges: { value: rippleAges },
-          uLocalYRange: { value: new THREE.Vector2(0, 1) },
-          uSampleCount: { value: 3 },
-          uTime: { value: 0 },
-          uTintAccent: { value: new THREE.Color() },
-          uTintBase: { value: new THREE.Color() },
-          uBrightness: { value: GLASS_THEME_SETTINGS.light.brightness },
-          uChromaticAberration: { value: 0.09 },
-          uContrast: { value: GLASS_THEME_SETTINGS.light.contrast },
-          uDiffuseness: { value: GLASS_THEME_SETTINGS.light.diffuseness },
-          uFresnelPower: { value: GLASS_THEME_SETTINGS.light.fresnelPower },
-          uFresnelSideDir: { value: new THREE.Vector3(-1, 1, -1) },
-          uFresnelStrength: { value: GLASS_THEME_SETTINGS.light.fresnelStrength },
-          uGamma: { value: 1 },
-          uRefractPower: { value: 0.54 },
-          uSaturation: { value: 1.2 },
-          uShininess: { value: GLASS_THEME_SETTINGS.light.shininess },
-          uSpecularStrength: { value: 0.94 },
-          uTintMix: { value: 1 },
-          uTintThicknessMaxAlpha: { value: GLASS_THEME_SETTINGS.light.tintThicknessMaxAlpha },
-          uTintThicknessMinAlpha: { value: GLASS_THEME_SETTINGS.light.tintThicknessMinAlpha },
-        },
-        vertexShader: GLASS_VERTEX_SHADER,
-        fragmentShader: GLASS_FRAGMENT_SHADER,
-        side: THREE.FrontSide,
-        depthTest: true,
-        depthWrite: true,
-        transparent: false,
-        toneMapped: false,
-      });
-      disposables.push(glassMaterial);
-
+      const accentColor = new THREE.Color("#009dff");
+      const baseColor = new THREE.Color("#ffffff");
       const themePreference = window.matchMedia("(prefers-color-scheme: dark)");
       const syncThemeColors = () => {
         const styles = window.getComputedStyle(root);
         const base = styles.getPropertyValue("--hero-glass-tint-base").trim();
         const accent = styles.getPropertyValue("--hero-glass-tint-accent").trim();
         if (base && CSS.supports("color", base)) {
-          glassMaterial.uniforms.uTintBase.value.setStyle(base);
-          root.dataset.glassTintBase = `#${glassMaterial.uniforms.uTintBase.value.getHexString()}`;
+          baseColor.setStyle(base);
+          root.dataset.glassTintBase = `#${baseColor.getHexString()}`;
         }
         if (accent && CSS.supports("color", accent)) {
-          glassMaterial.uniforms.uTintAccent.value.setStyle(accent);
-          root.dataset.glassTintAccent = `#${glassMaterial.uniforms.uTintAccent.value.getHexString()}`;
+          accentColor.setStyle(accent);
+          root.dataset.glassTintAccent = `#${accentColor.getHexString()}`;
         }
         const explicitTheme = document.documentElement.dataset.theme;
         const classTheme = document.documentElement.classList.contains("dark")
@@ -1169,15 +810,6 @@ export function GlassWordScene() {
         const resolvedTheme = explicitTheme === "dark" || explicitTheme === "light"
           ? explicitTheme
           : classTheme ?? (themePreference.matches ? "dark" : "light");
-        const settings = GLASS_THEME_SETTINGS[resolvedTheme];
-        glassMaterial.uniforms.uBrightness.value = settings.brightness;
-        glassMaterial.uniforms.uContrast.value = settings.contrast;
-        glassMaterial.uniforms.uDiffuseness.value = settings.diffuseness;
-        glassMaterial.uniforms.uFresnelPower.value = settings.fresnelPower;
-        glassMaterial.uniforms.uFresnelStrength.value = settings.fresnelStrength;
-        glassMaterial.uniforms.uShininess.value = settings.shininess;
-        glassMaterial.uniforms.uTintThicknessMaxAlpha.value = settings.tintThicknessMaxAlpha;
-        glassMaterial.uniforms.uTintThicknessMinAlpha.value = settings.tintThicknessMinAlpha;
         root.dataset.glassTheme = resolvedTheme;
         activeUntil = performance.now() + 900;
         wakeAnimation();
@@ -1194,22 +826,11 @@ export function GlassWordScene() {
       };
       syncThemeColors();
 
-      let activeGeometry = new THREE.BufferGeometry();
-      const updateLocalYRange = (geometry: THREE.BufferGeometry) => {
-        geometry.computeBoundingBox();
-        if (!geometry.boundingBox) return;
-        glassMaterial.uniforms.uLocalYRange.value.set(
-          geometry.boundingBox.min.y,
-          geometry.boundingBox.max.y,
-        );
-      };
-      const sculpture = new THREE.Mesh(activeGeometry, glassMaterial);
-      sculpture.renderOrder = 2;
+      let particleWord: ParticleWord | undefined;
       const heroGroup = new THREE.Group();
-      heroGroup.rotation.set(-0.035, 0.035, -0.018);
-      heroGroup.add(sculpture);
+      heroGroup.rotation.set(-0.035, 0.08, -0.018);
       glassScene.add(heroGroup);
-      disposables.push({ dispose: () => activeGeometry.dispose() });
+      disposables.push({ dispose: () => particleWord?.dispose() });
 
       const copyMaterial = new THREE.ShaderMaterial({
         uniforms: { uScene: { value: sceneTarget.texture } },
@@ -1261,20 +882,13 @@ export function GlassWordScene() {
         compositeTarget.samples = 0;
         compositeTarget.setSize(targetWidth, targetHeight);
         fluidTarget.setSize(targetWidth, targetHeight);
-        glassResolution.set(targetWidth, targetHeight);
         backgroundResolution.set(targetWidth, targetHeight);
         fluidPass.resize(targetWidth, targetHeight);
-        const motionFieldSize = fluidPass.getFieldSize();
-        glassMaterial.uniforms.uMotionTexelStep.value.set(
-          1 / Math.max(motionFieldSize.x, 1),
-          1 / Math.max(motionFieldSize.y, 1),
-        );
         flarePass.resize(targetWidth, targetHeight);
         fluidPass.reset(renderer);
         root.dataset.postfxProfile = narrow || !finePointer.matches
           ? "static-optical"
           : "multiscale-temporal-optical";
-        glassMaterial.uniforms.uSampleCount.value = narrow ? 2 : 3;
         camera.aspect = width / height;
         camera.position.z = narrow ? 9.4 : 7.9;
         camera.updateProjectionMatrix();
@@ -1378,44 +992,36 @@ export function GlassWordScene() {
         });
       };
 
-      {
-        const modelLoader = new GLTFLoader();
-        modelLoader.load(
-          "/model/hola.glb",
-          (gltf) => {
-            if (disposed) return;
-            try {
-              const wordGeometry = createWordGeometry(gltf.scene, 6.35);
-              const previousGeometry = activeGeometry;
-              activeGeometry = wordGeometry;
-              sculpture.geometry = wordGeometry;
-              previousGeometry.dispose();
-              updateLocalYRange(wordGeometry);
-              markModelReady("hola-original");
-              resize();
-              activeUntil = performance.now() + 900;
-              wakeAnimation();
-            } catch {
-              markModelFailed();
-            }
-          },
-          undefined,
-          () => {
-            markModelFailed();
-          },
-        );
-      }
+      const modelRequest = new AbortController();
+      disposables.push({ dispose: () => modelRequest.abort() });
+      void fetch("/model/hello-particles.bin", { signal: modelRequest.signal })
+        .then(response => { if (!response.ok) throw new Error("Particle asset unavailable"); return response.arrayBuffer(); })
+        .then(buffer => {
+          if (disposed || contextLost || !renderer) return;
+          particleWord = new ParticleWord(renderer, buffer, isNarrow);
+          particleWord.mesh.renderOrder = 2;
+          heroGroup.add(particleWord.mesh);
+          root.dataset.particleCount = String(particleWord.mesh.geometry.getAttribute("position").count);
+          renderGlassPasses();
+          markModelReady("hello-particles");
+          activeUntil = performance.now() + 900;
+          wakeAnimation();
+        })
+        .catch(() => { if (!disposed) markModelFailed(); });
 
       const renderGlassPasses = () => {
         if (!renderer) return;
         const bubbleOnly = root.dataset.qaBubbleOnly === "true";
         const opticalFieldVisible = fluidVisible && !bubbleOnly;
-        glassMaterial.uniforms.uMotionField.value = fluidPass.getMotionTexture();
-        glassMaterial.uniforms.uOpticalCoupling.value = opticalFieldVisible ? 1 : 0;
         renderer.setRenderTarget(sceneTarget);
         renderer.setClearColor(0x000000, 1);
         renderer.clear(true, true, true);
         renderer.render(backgroundScene, camera);
+
+        if (opticalFieldVisible) {
+          fluidPass.render(renderer, sceneTarget.texture, sceneTarget.texture, fluidTarget, true);
+        }
+        copyMaterial.uniforms.uScene.value = opticalFieldVisible ? fluidTarget.texture : sceneTarget.texture;
 
         renderer.setRenderTarget(compositeTarget);
         renderer.setClearColor(0xb9d9ec, 1);
@@ -1424,25 +1030,14 @@ export function GlassWordScene() {
         renderer.clearDepth();
         renderer.render(glassScene, camera);
 
-        let finalTexture = compositeTarget.texture;
-        if (opticalFieldVisible) {
-          fluidPass.render(
-            renderer,
-            compositeTarget.texture,
-            sceneTarget.texture,
-            fluidTarget,
-            true,
-          );
-          finalTexture = fluidTarget.texture;
-        }
         flarePass.setOpticalField(
           fluidPass.getMotionTexture(),
           fluidPass.getFeatureTexture(),
           fluidPass.getFieldSize(),
           opticalFieldVisible,
         );
-        flarePass.setTailColor(glassMaterial.uniforms.uTintAccent.value);
-        flarePass.render(renderer, finalTexture, flareVisible, fluidVisible);
+        flarePass.setTailColor(accentColor);
+        flarePass.render(renderer, compositeTarget.texture, flareVisible, fluidVisible);
       };
 
       const gl = renderer.getContext();
@@ -1488,7 +1083,7 @@ export function GlassWordScene() {
       let scrollFrame = 0;
       const updateScroll = () => {
         scrollFrame = 0;
-        if (!hero || reducedMotion.matches) return;
+        if (!hero || reducedMotion.matches || root.dataset.renderer === "fallback") return;
         const rect = hero.getBoundingClientRect();
         scrollProgress = THREE.MathUtils.clamp(-rect.top / Math.max(rect.height * 0.82, 1), 0, 1);
         hero.style.setProperty("--hero-progress", scrollProgress.toFixed(4));
@@ -1498,7 +1093,6 @@ export function GlassWordScene() {
           fluidWasVisible = false;
           fluidEnergy = 0;
           glassForce = 0;
-          glassMaterial.uniforms.uCursorForce.value = 0;
           fluidPass.reset(renderer);
           renderGlassPasses();
           root.dataset.fluidState = "idle";
@@ -1543,20 +1137,14 @@ export function GlassWordScene() {
           const hideStickers = root.dataset.qaHideStickers === "true";
           const visualElapsed = freezeAmbient ? 0 : elapsed;
           previousElapsed = elapsed;
-          rippleAges.forEach((age, index) => { rippleAges[index] = Math.min(9, age + delta); });
           backgroundSplatAges.forEach((age, index) => { backgroundSplatAges[index] = Math.min(9, age + delta); });
           backgroundMaterial.uniforms.uTime.value = visualElapsed;
-          glassMaterial.uniforms.uTime.value = visualElapsed;
           const pointerDamping = reducedMotion.matches ? 1 : 1 - Math.exp(-6 * delta);
           smoothPointer.lerp(reducedMotion.matches ? new THREE.Vector2() : targetPointer, pointerDamping);
           backgroundPointer.set(
             postFxOnly ? 0.5 : smoothPointer.x * 0.5 + 0.5,
             postFxOnly ? 0.5 : smoothPointer.y * 0.5 + 0.5,
           );
-          const hoverTarget = !postFxOnly && pointerOverGlass ? 1 : 0;
-          hoverStrength = THREE.MathUtils.lerp(hoverStrength, hoverTarget, hoverTarget > 0 ? 0.22 : 0.09);
-          glassMaterial.uniforms.uHoverStrength.value = hoverStrength;
-
           const pointerParallax = isNarrow || postFxOnly ? 0 : 1;
           camera.position.x = smoothPointer.x * 0.1 * pointerParallax;
           camera.position.y = 0.08 + smoothPointer.y * 0.06 * pointerParallax;
@@ -1568,8 +1156,8 @@ export function GlassWordScene() {
             ? 0
             : Math.sin(visualElapsed * 1.2) * 0.055 + Math.sin(visualElapsed * 0.6) * 0.018;
           heroGroup.scale.set(scrollScale, scrollScale * verticalScale, scrollScale);
-          heroGroup.rotation.x = -0.025 - smoothPointer.y * 0.032 * pointerParallax + scrollProgress * 0.1;
-          heroGroup.rotation.y = 0.025 + smoothPointer.x * 0.045 * pointerParallax + scrollProgress * 0.17;
+          heroGroup.rotation.x = 0.055 - smoothPointer.y * 0.04 * pointerParallax + scrollProgress * 0.1;
+          heroGroup.rotation.y = -0.10 + smoothPointer.x * 0.07 * pointerParallax + scrollProgress * 0.17;
           heroGroup.rotation.z = -0.012 + smoothPointer.x * 0.008 * pointerParallax;
           heroGroup.position.y = baseY + floatingY + scrollProgress * 0.46;
           let desiredLightAngle = defaultLightAngle;
@@ -1601,34 +1189,16 @@ export function GlassWordScene() {
             burstRequested = false;
           }
 
-          if (pointerDirty && pointerInsideHero && !reducedMotion.matches && !postFxOnly) {
-            const splashInterval = forceSplash ? 0.02 : 0.08;
-            if (elapsed - lastWordSplash > splashInterval) {
-              glassScene.updateMatrixWorld(true);
-              raycaster.setFromCamera(pointerNdc, camera);
-              const hit = raycaster.intersectObject(sculpture, false)[0];
-              if (hit) {
-                pointerOverGlass = true;
-                rippleUv[rippleSlot].copy(pointerUv);
-                rippleAges[rippleSlot] = 0;
-                rippleSlot = (rippleSlot + 1) % RIPPLE_COUNT;
-                lastWordSplash = elapsed;
-                root.dataset.pointerContact = "true";
-              } else {
-                pointerOverGlass = false;
-                root.dataset.pointerContact = "false";
-              }
-            }
-            pointerDirty = false;
-            forceSplash = false;
-          } else if (postFxOnly && pointerDirty) {
-            pointerDirty = false;
-            forceSplash = false;
-            pointerOverGlass = false;
-            root.dataset.pointerContact = "false";
-          }
-
-          root.dataset.activeRipples = String(rippleAges.filter((age) => age < 1.05).length);
+          raycaster.setFromCamera(pointerNdc, camera);
+          const particleState = particleWord?.update(
+            freezeAmbient ? 0 : delta, visualElapsed, raycaster.ray,
+            pointerInsideHero && !reducedMotion.matches && !postFxOnly,
+            compositeTarget.height, isNarrow,
+          );
+          pointerOverGlass = particleState?.contact ?? false;
+          root.dataset.pointerContact = String(pointerOverGlass);
+          root.dataset.particleEnergy = (particleState?.energy ?? 0).toFixed(3);
+          root.dataset.activeRipples = "0";
           const visibleStickerCount = stickerField?.update(
             visualElapsed,
             freezeAmbient ? 0 : delta,
@@ -1658,10 +1228,6 @@ export function GlassWordScene() {
             : liveForceTarget;
           const forceResponse = 1 - Math.exp(-(forceTarget > glassForce ? 24 : 3.6) * delta);
           glassForce = THREE.MathUtils.lerp(glassForce, forceTarget, forceResponse);
-          if (fluidPointerDelta.lengthSq() > 0.000001) {
-            glassVelocity.lerp(fluidPointerDelta, 0.48);
-          }
-          glassMaterial.uniforms.uCursorForce.value = glassForce;
           root.dataset.cursorForce = glassForce.toFixed(3);
           root.dataset.fieldEnergy = fluidEnergy.toFixed(3);
           if (fluidVisible) {
@@ -1731,6 +1297,8 @@ export function GlassWordScene() {
         removeThemeEvents();
         window.removeEventListener("pointermove", updatePointer);
         window.removeEventListener("pointerdown", pressPointer);
+        window.removeEventListener("pointerup", releasePointer);
+        window.removeEventListener("pointercancel", resetPointer);
         window.removeEventListener("blur", resetPointer);
         document.documentElement.removeEventListener("pointerleave", resetPointer);
         disposables.forEach((item) => item.dispose());
@@ -1749,6 +1317,8 @@ export function GlassWordScene() {
         removeThemeEvents();
         window.removeEventListener("pointermove", updatePointer);
         window.removeEventListener("pointerdown", pressPointer);
+        window.removeEventListener("pointerup", releasePointer);
+        window.removeEventListener("pointercancel", resetPointer);
         window.removeEventListener("blur", resetPointer);
         document.documentElement.removeEventListener("pointerleave", resetPointer);
         disposables.forEach((item) => item.dispose());
@@ -1773,7 +1343,10 @@ export function GlassWordScene() {
       data-glass-theme="loading"
       data-glass-tint-accent="loading"
       data-glass-tint-base="loading"
-      data-glass-word="hola"
+      data-glass-word="HELLO"
+      data-particle-word="HELLO"
+      data-particle-count="0"
+      data-particle-energy="0.000"
       data-light-angle="0"
       data-light-x="4"
       data-light-y="9"
@@ -1785,11 +1358,11 @@ export function GlassWordScene() {
       data-postfx-passes="0"
       data-postfx-profile="loading"
       data-postfx-storage="pending"
-      data-deformation-profile="gel-bubble"
+      data-deformation-profile="particle-flow"
       data-cursor-force="0.000"
       data-field-energy="0.000"
       data-render-state="loading"
-      data-render-layers="background+stickers|multiscale-motion|glass+ripples+flow|surface|refraction+dispersion|temporal-afterglow|caustics|composite"
+      data-render-layers="background+stickers|particle-volume+inertia+glow|temporal-afterglow|composite"
       data-scene-mode="loading"
       data-shimmer-state="loading"
       data-sticker-count="0"
@@ -1800,31 +1373,7 @@ export function GlassWordScene() {
     >
       <canvas ref={canvasRef} />
       <div className="glassFallback" data-glass-fallback>
-          <svg viewBox={HOLA_VIEWBOX} role="presentation" fillRule="evenodd" clipRule="evenodd">
-            <defs>
-              <linearGradient id="fallback-glass-face" x1="0" y1="0" x2="0.75" y2="1">
-                <stop offset="0" stopColor="var(--hero-glass-tint-base)" stopOpacity="0.78" />
-                <stop offset="0.24" stopColor="var(--hero-glass-tint-soft)" stopOpacity="0.48" />
-                <stop offset="0.64" stopColor="var(--hero-glass-tint-accent)" stopOpacity="0.28" />
-                <stop offset="1" stopColor="var(--hero-glass-tint-soft)" stopOpacity="0.5" />
-              </linearGradient>
-              <linearGradient id="fallback-glass-sheen" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stopColor="#fff" stopOpacity="0" />
-                <stop offset="0.48" stopColor="#fff" stopOpacity="0.7" />
-                <stop offset="0.58" stopColor="#c5eaff" stopOpacity="0.42" />
-                <stop offset="1" stopColor="#fff" stopOpacity="0" />
-              </linearGradient>
-              <clipPath id="fallback-glass-clip">
-                <path d={HOLA_PATH} />
-              </clipPath>
-            </defs>
-            <path className="glassFallbackDepth" d={HOLA_PATH} />
-            <path className="glassFallbackFace" d={HOLA_PATH} />
-            <g className="glassFallbackSheen" clipPath="url(#fallback-glass-clip)">
-              <rect x="100" y="-400" width="42" height="600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 121 -100)" />
-              <rect x="460" y="-400" width="62" height="600" fill="url(#fallback-glass-sheen)" transform="rotate(-14 491 -100)" />
-            </g>
-          </svg>
+        <Image src="/model/hello-particles.svg" alt="" width={1056} height={364} priority unoptimized />
       </div>
     </div>
   );

@@ -2,12 +2,13 @@
 
 ## Hero lettering
 
-`public/model/hola.glb` and `components/hero/HolaPath.ts` are original generated
-assets. Their hand-drawn curves and surface construction are in
-`scripts/build-hola.mjs`; no external font, outline or model is an input.
+The HELLO particle assets are generated from the bundled Helvetiker Bold
+typeface, Copyright (c) 2004 MAGENTA Ltd. Its complete permission notice is
+retained in `public/fonts/helvetiker_bold.typeface.json`.
 
-The generator uses Three.js (MIT), with its notice retained in the installed
-package. The lettering generator runs offline and is not shipped as browser code.
+`scripts/build-hello-particles.mjs` samples the beveled letter surfaces and
+interiors using Three.js (MIT). The browser renders particles with locally
+authored movement and lighting; it does not download a solid lettering model.
 
 ## React Bits: Liquid Ether and Ripple Distortion
 

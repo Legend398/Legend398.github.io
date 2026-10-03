@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -9,7 +9,8 @@ const requiredFiles = [
   "out/sitemap.xml",
   "out/googlecc418591f1204068.html",
   "out/Himanshu-Kumar-Resume-2026.pdf",
-  "out/model/hola.glb",
+  "out/model/hello-particles.bin",
+  "out/model/hello-particles.svg",
   "out/work/loop-engineering/index.html",
   "out/work/stocklane/index.html",
   "out/work/credit-risk-explorer/index.html",
@@ -27,11 +28,12 @@ if (missingFiles.length > 0) {
 }
 
 const homeHtml = readFileSync(resolve(root, "out/index.html"), "utf8");
-if (existsSync(resolve(root, "out/model/hello.gltf")) || homeHtml.includes("hello.gltf")) {
-  throw new Error("The retired reference model must not be published.");
+const particleAssets = new Set(["hello-particles.bin", "hello-particles.svg"]);
+if (readdirSync(resolve(root, "out/model")).some(file => !particleAssets.has(file))) {
+  throw new Error("Only the current particle assets may be published in the model directory.");
 }
-if (!homeHtml.includes('data-glass-word="hola"')) {
-  throw new Error("The homepage must publish hola and its static fallback.");
+if (!homeHtml.includes('data-particle-word="HELLO"')) {
+  throw new Error("The homepage must publish the particle HELLO and its static fallback.");
 }
 const sitemap = readFileSync(resolve(root, "out/sitemap.xml"), "utf8");
 const robots = readFileSync(resolve(root, "out/robots.txt"), "utf8");

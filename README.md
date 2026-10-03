@@ -2,12 +2,17 @@
 
 [View the live portfolio](https://legend398.github.io/)
 
-A software-engineering portfolio built from verified CV and project evidence. The homepage pairs plain-language project stories and genuine product media with an original sculpted glass `hola` powered by Three.js. Its rounded strokes follow original spatial curves with consistent thickness and carefully layered crossings. The word stays sharp at rest and applies a local optical ripple only where the pointer intersects it; reduced-motion and no-WebGL sessions receive a matching static fallback.
+A software-engineering portfolio built from verified CV and project evidence.
+The homepage pairs project stories and product media with a volumetric HELLO
+made of particles. Cursor movement carries nearby grains through the letters;
+spring forces return them to their resting shape. Silver shading and sparse
+highlights brighten with movement. Reduced-motion and no-WebGL
+sessions receive a matching static particle illustration.
 
-Regenerate the model and fallback outline with `node scripts/build-hola.mjs`.
-The generator uses the curves in that file and tools already bundled in the
-project's dependencies. It takes no font or downloaded model as an input.
-Run `node scripts/verify-hola.mjs` to check the exported surface and asset budget.
+Regenerate the particle asset and fallback with `node scripts/build-hello-particles.mjs`.
+The authoring script uses the bundled licensed Helvetiker typeface and Three.js;
+no additional dependency or modeling application is required.
+Run `node scripts/verify-hello-particles.mjs` to check the asset and decoder.
 
 ## Run locally
 
@@ -34,4 +39,4 @@ npm run verify:pages
 npm run verify
 ```
 
-The Playwright suite checks all case-study routes, keyboard navigation, genuine project images, publishing metadata, overflow, the interactive glass-word path, offscreen pausing, reduced-motion behavior, and the no-WebGL fallback. The content source is `lib/portfolio.ts`; design, provenance, and reference boundaries are documented in `DESIGN.md`.
+The Playwright suite checks all case-study routes, keyboard navigation, genuine project images, publishing metadata, overflow, the interactive particle word, offscreen pausing, reduced-motion behavior, and the no-WebGL fallback. The content source is `lib/portfolio.ts`; current visual and interaction decisions are documented in `DESIGN.md`.

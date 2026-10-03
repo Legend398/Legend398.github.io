@@ -128,6 +128,7 @@
 }
 
 .studioHeroMeta {
+  user-select: none;
   display: grid;
   font: 560 clamp(13px, 1.08vw, 16px) / 1.48 var(--font-mono), monospace;
   gap: clamp(28px, 7vw, 130px);
@@ -295,6 +296,12 @@
     drop-shadow(0 20px 24px rgba(25, 68, 88, 0.18))
     drop-shadow(-3px -4px 7px rgba(255, 255, 255, 0.5));
   overflow: visible;
+  width: 100%;
+}
+
+.studioHero :global(.glassFallback img) {
+  display: block;
+  height: auto;
   width: 100%;
 }
 

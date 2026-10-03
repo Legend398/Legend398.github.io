@@ -205,20 +205,20 @@ test("homepage explains Himanshu's work in plain language", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
-test("reduced motion presents the sculpted hola word as a polished static fallback", async ({ page }) => {
+test("reduced motion presents the particle HELLO as a polished static fallback", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
   const glassForm = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(glassForm).toBeVisible();
-  await expect(glassForm).toHaveAttribute("data-glass-word", "hola");
+  await expect(glassForm).toHaveAttribute("data-glass-word", "HELLO");
   await expect(glassForm).toHaveAttribute("data-scene-mode", "fallback");
   await expect(glassForm).toHaveAttribute("data-render-state", "ready");
   await expect(glassForm).toHaveAttribute("data-active-ripples", "0");
   await expect(glassForm.locator("canvas")).toBeHidden();
   const fallback = glassForm.locator("[data-glass-fallback]");
   await expect(fallback).toBeVisible();
-  await expect(fallback.locator("svg path")).not.toHaveCount(0);
+  await expect(fallback.locator("img")).toHaveAttribute("src", "/model/hello-particles.svg");
 });
 
 test("homepage uses real project images and removes obsolete showcase UI", async ({ page }) => {
@@ -281,7 +281,7 @@ test("profile ripple mounts only while the About card is visible", async ({ page
 
 test("hero waits for its original model and falls back if the download fails", async ({ page }) => {
   let releaseModelRequest: (() => void) | undefined;
-  await page.route("**/model/hola.glb", async (route) => {
+  await page.route("**/model/hello-particles.bin", async (route) => {
     await new Promise<void>((resolve) => {
       releaseModelRequest = resolve;
     });
@@ -311,7 +311,7 @@ test("hero waits for its original model and falls back if the download fails", a
   }
 });
 
-test("slow sticker textures do not block the hola WebGL hero", async ({ page }) => {
+test("slow sticker textures do not block the particle WebGL hero", async ({ page }) => {
   let releaseStickerRequests: (() => void) | undefined;
   const stickerGate = new Promise<void>((resolve) => {
     releaseStickerRequests = resolve;
@@ -327,7 +327,7 @@ test("slow sticker textures do not block the hola WebGL hero", async ({ page }) 
   try {
     const glass = page.locator('[data-v8-hero] [data-glass-stage]');
     await expect(glass).toHaveAttribute("data-render-state", "ready");
-    await expect(glass).toHaveAttribute("data-model-source", "hola-original");
+    await expect(glass).toHaveAttribute("data-model-source", "hello-particles");
     await expect(glass).toHaveAttribute("data-renderer", "webgl");
     await expect(glass).toHaveAttribute("data-postfx-profile", "multiscale-temporal-optical");
     await expect(glass).toHaveAttribute("data-sticker-state", "loading");
@@ -363,7 +363,7 @@ test("the first three sticker textures start falling while the rest continue str
   try {
     const glass = page.locator('[data-v8-hero] [data-glass-stage]');
     await expect(glass).toHaveAttribute("data-render-state", "ready");
-    await expect(glass).toHaveAttribute("data-model-source", "hola-original");
+    await expect(glass).toHaveAttribute("data-model-source", "hello-particles");
     await expect(glass).toHaveAttribute("data-stickers-loaded", "3");
     await expect(glass).toHaveAttribute("data-active-stickers", "3");
     await expect(glass).toHaveAttribute("data-sticker-state", "streaming");
@@ -377,20 +377,20 @@ test("the first three sticker textures start falling while the rest continue str
   }
 });
 
-test("the hola hero never requests a retired reference model", async ({ page }) => {
+test("the particle hero never requests a retired reference model", async ({ page }) => {
   const modelRequests: string[] = [];
   page.on("request", request => {
-    if (/\.(gltf|glb)(?:\?|$)/.test(request.url())) modelRequests.push(request.url());
+    if (/\.(gltf|glb|bin)(?:\?|$)/.test(request.url())) modelRequests.push(request.url());
   });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   const glass = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(glass).toHaveAttribute("data-model-source", "hola-original");
+  await expect(glass).toHaveAttribute("data-model-source", "hello-particles");
   await expect(glass).toHaveAttribute("data-render-state", "ready");
   expect(modelRequests.length).toBeGreaterThan(0);
-  expect(modelRequests.every(url => url.endsWith("/model/hola.glb"))).toBe(true);
+  expect(modelRequests.every(url => url.endsWith("/model/hello-particles.bin"))).toBe(true);
 });
-test("hero shows its glass fallback without JavaScript or a loading screen", async ({ browser }) => {
+test("hero shows its particle fallback without JavaScript or a loading screen", async ({ browser }) => {
   const context = await browser.newContext({
     baseURL: "http://127.0.0.1:3200",
     javaScriptEnabled: false,
@@ -410,14 +410,14 @@ test("hero shows its glass fallback without JavaScript or a loading screen", asy
   }
 });
 
-test("v8 hero keeps its sculpted glass render ready and sharp while idle", async ({ page }) => {
+test("v8 hero keeps its particle volume ready and sharp while idle", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
   const glass = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(glass).toHaveAttribute("data-glass-word", "hola");
-  await expect(glass).toHaveAttribute("data-model-source", "hola-original");
+  await expect(glass).toHaveAttribute("data-glass-word", "HELLO");
+  await expect(glass).toHaveAttribute("data-model-source", "hello-particles");
   await expect(glass).toHaveAttribute("data-scene-mode", "webgl");
   await expect(glass).toHaveAttribute("data-render-state", "ready");
   await expect(glass).toHaveAttribute("data-shimmer-state", "animated");
@@ -482,31 +482,19 @@ test("desktop and mobile first viewports contain the v8 hero without collisions 
   }
 });
 
-test("direct movement over the sculpted word creates bounded ripples that settle", async ({ page }) => {
-  await page.setViewportSize({ width: 1_440, height: 900 });
+test("particle volume responds to strokes and settles after the pointer leaves", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-
-  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(scene).toHaveAttribute("data-scene-mode", "webgl");
-  const hitPoint = await movePointerToGlassWord(page, scene);
-  await expect(scene).toHaveAttribute("data-pointer-contact", "true");
-  for (let index = 0; index < 6; index += 1) {
-    await page.mouse.move(
-      hitPoint.x + (index % 2 === 0 ? 4 : -4),
-      hitPoint.y + (index % 3 === 0 ? 3 : -3),
-    );
-    await page.waitForTimeout(90);
-  }
-  await expect.poll(async () => Number(await scene.getAttribute("data-active-ripples"))).toBeGreaterThan(1);
-  const boundedCount = Number(await scene.getAttribute("data-active-ripples"));
-  expect(boundedCount).toBeLessThanOrEqual(4);
-
-  await page.mouse.move(8, 8);
+  const scene = page.locator("[data-particle-word]");
+  await expect(scene).toHaveAttribute("data-particle-count", "65536");
+  const hit = await movePointerToGlassWord(page, scene);
+  await page.mouse.move(hit.x - 32, hit.y, { steps: 5 });
+  await page.mouse.move(hit.x + 32, hit.y, { steps: 10 });
+  await expect.poll(async () => Number(await scene.getAttribute("data-particle-energy"))).toBeGreaterThan(.05);
+  await page.mouse.move(0, 0);
   await expect(scene).toHaveAttribute("data-pointer-contact", "false");
-  await expect.poll(async () => Number(await scene.getAttribute("data-active-ripples")), {
-    timeout: 3_000,
-  }).toBe(0);
+  await expect.poll(async () => Number(await scene.getAttribute("data-particle-energy")), { timeout: 5000 }).toBeLessThan(.01);
   await expect(scene).toHaveAttribute("data-render-state", "ready");
 });
 
@@ -518,11 +506,11 @@ test("hero cursor field refracts while the flare follows movement in real time",
   const scene = page.locator('[data-v8-hero] [data-glass-stage]');
   await expect(scene).toHaveAttribute(
     "data-render-layers",
-    "background+stickers|multiscale-motion|glass+ripples+flow|surface|refraction+dispersion|temporal-afterglow|caustics|composite",
+    "background+stickers|particle-volume+inertia+glow|temporal-afterglow|composite",
   );
   await expect(scene).toHaveAttribute("data-postfx-profile", "multiscale-temporal-optical");
   await expect(scene).toHaveAttribute("data-postfx-storage", "rgba8-packed");
-  await expect(scene).toHaveAttribute("data-deformation-profile", "gel-bubble");
+  await expect(scene).toHaveAttribute("data-deformation-profile", "particle-flow");
   await expect(scene).toHaveAttribute("data-fluid-state", "idle");
   await expect(scene).toHaveAttribute("data-postfx-passes", "2");
   await expect(scene).toHaveAttribute("data-flare-state", "active");
@@ -633,67 +621,21 @@ test("multiscale cursor field reaches the wider scene and leaves a smooth afterg
   expect(afterglowDifference.meanDelta).toBeLessThan(liveDifference.meanDelta * 1.15);
 });
 
-test("gel bubble visibly bends the hola word without changing a distant control region", async ({ page }) => {
-  await page.setViewportSize({ width: 960, height: 640 });
+test("mobile keeps a complete particle word and resumes after scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-
-  const scene = page.locator('[data-v8-hero] [data-glass-stage]');
-  await expect(scene).toHaveAttribute("data-deformation-profile", "gel-bubble");
-  const hitPoint = await movePointerToGlassWord(page, scene);
-  const canvasBox = await scene.locator("canvas").boundingBox();
-  expect(canvasBox).not.toBeNull();
-  if (!canvasBox) return;
-
-  const roiWidth = 176;
-  const roiHeight = 144;
-  const wordClip = {
-    x: Math.max(canvasBox.x, Math.min(hitPoint.x - roiWidth / 2, canvasBox.x + canvasBox.width - roiWidth)),
-    y: Math.max(canvasBox.y, Math.min(hitPoint.y - roiHeight / 2, canvasBox.y + canvasBox.height - roiHeight)),
-    width: roiWidth,
-    height: roiHeight,
-  };
-  const controlClip = {
-    x: canvasBox.x + 8,
-    y: canvasBox.y + canvasBox.height - roiHeight - 8,
-    width: roiWidth,
-    height: roiHeight,
-  };
-
-  await page.mouse.move(8, 8);
-  await expect(scene).toHaveAttribute("data-fluid-state", "idle", { timeout: 5_000 });
-  await scene.evaluate((element) => {
-    const target = element as HTMLElement;
-    target.dataset.qaFreezeAmbient = "true";
-    target.dataset.qaHideStickers = "true";
-    target.dataset.qaPostFxOnly = "true";
-    target.dataset.qaBubbleOnly = "true";
-  });
-  await page.waitForTimeout(150);
-  const idleWord = await page.screenshot({ clip: wordClip });
-  const idleControl = await page.screenshot({ clip: controlClip });
-
-  await scene.evaluate((element) => {
-    const target = element as HTMLElement;
-    target.dataset.qaHoldFluid = "true";
-    target.dataset.qaHoldBubble = "true";
-  });
-  await page.mouse.move(hitPoint.x - 52, hitPoint.y - 8, { steps: 8 });
-  await page.mouse.move(hitPoint.x + 52, hitPoint.y + 8, { steps: 14 });
-  await page.mouse.move(hitPoint.x, hitPoint.y, { steps: 8 });
-  await expect.poll(async () => Number(await scene.getAttribute("data-cursor-force"))).toBeGreaterThan(0.35);
-  await expect(scene).toHaveAttribute("data-postfx-passes", "2");
-  const activeWord = await page.screenshot({ clip: wordClip });
-  const activeControl = await page.screenshot({ clip: controlClip });
-
-  const wordDifference = await measureImageDifference(page, idleWord, activeWord);
-  const controlDifference = await measureImageDifference(page, idleControl, activeControl);
-  expect(wordDifference.changedRatio).toBeGreaterThan(0.012);
-  expect(wordDifference.meanDelta).toBeGreaterThan(1.2);
-  expect(wordDifference.meanDelta).toBeGreaterThan(controlDifference.meanDelta * 3 + 0.5);
+  const scene = page.locator("[data-particle-word]");
+  await expect(scene).toHaveAttribute("data-render-state", "ready");
+  await expect(scene).toHaveAttribute("data-particle-count", "16384");
+  await expectNoHorizontalOverflow(page);
+  await page.locator("#about").scrollIntoViewIfNeeded();
+  await expect(page.locator("#about")).toBeInViewport();
+  await page.locator("[data-v8-hero]").scrollIntoViewIfNeeded();
+  await expect(scene).toHaveAttribute("data-render-state", "ready");
 });
 
-test("pointer movement outside the sculpted word does not create word ripples", async ({ page }) => {
+test("pointer movement outside HELLO does not activate the word", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   const scene = page.locator('[data-v8-hero] [data-glass-stage]');
@@ -705,7 +647,7 @@ test("pointer movement outside the sculpted word does not create word ripples", 
   await expect(scene).toHaveAttribute("data-active-ripples", "0");
 });
 
-test("hero camera returns to neutral and glass tint follows theme tokens", async ({ page }) => {
+test("hero camera returns to neutral and optical accent follows theme tokens", async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
   await page.goto("/");
