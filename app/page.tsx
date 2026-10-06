@@ -4,6 +4,7 @@ import { ParticleWordScene } from "@/components/ParticleWordScene";
 import HimanshuProfileCard from "@/components/profile/HimanshuProfileCard";
 import { HomeRuntime } from "@/components/portfolio/HomeRuntime";
 import { ProjectMedia } from "@/components/portfolio/ProjectMedia";
+import { WorkGallery } from "@/components/portfolio/WorkGallery";
 import { capabilities, certificates, profile, projects } from "@/lib/portfolio";
 import styles from "./HomePage.module.css";
 
@@ -53,7 +54,7 @@ export default function HomePage() {
             <a data-primary-action href="#work">
               View selected work <span aria-hidden="true">↓</span>
             </a>
-            <span aria-hidden="true">Selected work · 03 systems</span>
+            <span aria-hidden="true">Selected work · 01 product / 03 projects</span>
           </div>
         </section>
 
@@ -108,65 +109,122 @@ export default function HomePage() {
                 <h2 id="work-title">Products with a visible job to do.</h2>
               </div>
               <p>
-                Three real builds: an agent workflow, an inventory system, and an explained machine-learning app.
-                Open a case study to see the problem, the solution, how it works, and what I built.
+                A data workspace, an agent workflow, an inventory system, and an explained machine-learning app.
+                Explore the product or open a project case study.
               </p>
             </header>
 
-            <div className={styles.projectGrid}>
-              {projects.map((project, index) => (
-                  <article
-                    className={`${styles.projectCard} ${index === 0 ? styles.projectLead : ""}`}
-                    data-project-card
-                    key={project.slug}
-                  >
-                    <Link
-                      aria-label={`Read the ${project.title} case study`}
+            <WorkGallery
+              productCount={1}
+              projectCount={projects.length}
+              products={(
+                <div className={styles.projectGrid}>
+                  <article className={`${styles.projectCard} ${styles.projectLead}`} data-product-card>
+                    <a
+                      aria-label="Visit DVIndex (opens in a new tab)"
                       className={styles.mediaLink}
                       data-project-action
-                      href={`/work/${project.slug}`}
+                      href="https://dvindex.co.in"
+                      rel="noreferrer"
+                      target="_blank"
                     >
                       <ProjectMedia
-                        alt={project.imageAlt}
-                        label={project.title}
-                        number={project.number}
-                        primary={project.image}
-                        priority={index === 0}
-                        sizes={index === 0
-                          ? "(max-width: 760px) 100vw, 72vw"
-                          : "(max-width: 760px) 100vw, 46vw"}
+                        alt="DVIndex demo preview showing a customer-churn question, connected data sources, and an analysis plan."
+                        label="DVIndex"
+                        number="Product 01"
+                        primary="/work/dvindex-preview.jpg"
+                        sizes="(max-width: 760px) 100vw, 72vw"
                       />
-                    </Link>
-
+                    </a>
                     <div className={styles.projectCopy}>
                       <p className={styles.projectMeta}>
-                        <span>{project.category}</span>
-                        <span>{project.date}</span>
+                        <span>Product · AI workspace</span>
+                        <span>Aug–Sep 2026</span>
                       </p>
-                      <h3>{project.title}</h3>
-                      <p>{project.strapline}</p>
-                      <p className={styles.projectStack}>{project.stack.join(" · ")}</p>
+                      <h3>DVIndex</h3>
+                      <p>AI workspace for data work. Connect your data, investigate business questions, and get evidence-backed analysis.</p>
+                      <a
+                        className={styles.productRecognition}
+                        href="https://github.com/ucbepic/DataAgentBench/blob/6ad9d689393ff13b51a6bdcc0b98d1d4d8209f36/README.md#-leaderboard"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <span aria-hidden="true">↗</span> #5 on DataAgentBench · Oct 2026
+                        <span className="srOnly"> (opens in a new tab)</span>
+                      </a>
                       <div className={styles.projectLinks}>
-                        <Link className={styles.projectAction} data-project-action href={`/work/${project.slug}`}>
-                          Read case study <span aria-hidden="true">↗</span>
-                        </Link>
-                        {project.repository ? (
-                          <a
-                            className={styles.projectAction}
-                            data-project-action
-                            href={project.repository}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            GitHub <span aria-hidden="true">↗</span>
-                            <span className="srOnly"> (opens in a new tab)</span>
-                          </a>
-                        ) : null}
+                        <a
+                          className={styles.projectAction}
+                          data-project-action
+                          href="https://dvindex.co.in"
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          Visit DVIndex <span aria-hidden="true">↗</span>
+                          <span className="srOnly"> (opens in a new tab)</span>
+                        </a>
                       </div>
                     </div>
                   </article>
-              ))}
-            </div>
+                </div>
+              )}
+              projects={(
+                <div className={styles.projectGrid}>
+                  {projects.map((project, index) => (
+                      <article
+                        className={`${styles.projectCard} ${index === 0 ? styles.projectLead : ""}`}
+                        data-project-card
+                        key={project.slug}
+                      >
+                        <Link
+                          aria-label={`Read the ${project.title} case study`}
+                          className={styles.mediaLink}
+                          data-project-action
+                          href={`/work/${project.slug}`}
+                        >
+                          <ProjectMedia
+                            alt={project.imageAlt}
+                            label={project.title}
+                            number={project.number}
+                            primary={project.image}
+                            priority={index === 0}
+                            sizes={index === 0
+                              ? "(max-width: 760px) 100vw, 72vw"
+                              : "(max-width: 760px) 100vw, 46vw"}
+                          />
+                        </Link>
+
+                        <div className={styles.projectCopy}>
+                          <p className={styles.projectMeta}>
+                            <span>{project.category}</span>
+                            <span>{project.date}</span>
+                          </p>
+                          <h3>{project.title}</h3>
+                          <p>{project.strapline}</p>
+                          <p className={styles.projectStack}>{project.stack.join(" · ")}</p>
+                          <div className={styles.projectLinks}>
+                            <Link className={styles.projectAction} data-project-action href={`/work/${project.slug}`}>
+                              Read case study <span aria-hidden="true">↗</span>
+                            </Link>
+                            {project.repository ? (
+                              <a
+                                className={styles.projectAction}
+                                data-project-action
+                                href={project.repository}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                GitHub <span aria-hidden="true">↗</span>
+                                <span className="srOnly"> (opens in a new tab)</span>
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                  ))}
+                </div>
+              )}
+            />
           </div>
         </section>
 

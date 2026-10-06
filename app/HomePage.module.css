@@ -881,6 +881,29 @@
   margin-top: 1.4rem;
 }
 
+.productRecognition {
+  align-items: center;
+  border-block: 1px solid var(--home-rule);
+  color: var(--home-forest);
+  display: flex;
+  gap: 0.6rem;
+  font: 600 0.72rem / 1.6 var(--font-mono), monospace;
+  margin-top: 1.25rem;
+  min-height: 44px;
+  padding-block: 0.6rem;
+  text-decoration: none;
+}
+
+.productRecognition:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.productRecognition:focus-visible {
+  outline: 3px solid var(--home-vermilion);
+  outline-offset: 4px;
+}
+
 .projectAction {
   border: 1px solid rgba(16, 23, 19, 0.26);
 }

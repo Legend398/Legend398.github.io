@@ -47,9 +47,9 @@ const projectPrimaryImages = {
 
 async function expectLoadedImages(page: Page) {
   const images = page.locator("[data-project-primary]");
-  await expect(images).toHaveCount(3);
+  await expect(images).toHaveCount(4);
 
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 4; index += 1) {
     const image = images.nth(index);
     await image.scrollIntoViewIfNeeded();
     await expect(image).toBeVisible();
@@ -735,12 +735,12 @@ test("project cards present real images as document sheets with restrained hover
   const media = page.locator("[data-project-media]");
   const sheets = page.locator("[data-project-sheet]");
   await media.first().scrollIntoViewIfNeeded();
-  await expect(media).toHaveCount(3);
-  await expect(sheets).toHaveCount(3);
-  await expect(page.locator("[data-project-sheet-bar]")).toHaveCount(3);
+  await expect(media).toHaveCount(4);
+  await expect(sheets).toHaveCount(4);
+  await expect(page.locator("[data-project-sheet-bar]")).toHaveCount(4);
   await expect(media.locator("canvas")).toHaveCount(0);
   await expect(page.locator("[data-halftone-reveal]")).toHaveCount(0);
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 4; index += 1) {
     await expectDecodedImage(page.locator("[data-project-primary]").nth(index));
   }
 

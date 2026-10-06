@@ -20,6 +20,7 @@ const requiredFiles = [
   "out/work/stocklane-order.png",
   "out/work/credit-risk-dashboard-current.png",
   "out/work/credit-risk-result.png",
+  "out/work/dvindex-preview.jpg",
 ];
 
 const missingFiles = requiredFiles.filter((file) => !existsSync(resolve(root, file)));
@@ -34,6 +35,11 @@ if (readdirSync(resolve(root, "out/model")).some(file => !particleAssets.has(fil
 }
 if (!homeHtml.includes('data-particle-word="HELLO"')) {
   throw new Error("The homepage must publish the particle HELLO and its static fallback.");
+}
+for (const expected of ["Products", "DVIndex", "https://dvindex.co.in", "#5 on DataAgentBench"]) {
+  if (!homeHtml.includes(expected)) {
+    throw new Error(`Homepage is missing the public product content: ${expected}.`);
+  }
 }
 const sitemap = readFileSync(resolve(root, "out/sitemap.xml"), "utf8");
 const robots = readFileSync(resolve(root, "out/robots.txt"), "utf8");
